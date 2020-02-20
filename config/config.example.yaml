@@ -1,0 +1,217 @@
+databases:
+  mongodb:
+    host: '127.0.0.1'
+    port: 27017
+    dbname: 'dawis'
+    username: ''
+    password: ''
+  orm:
+    dbtype: 'mysql'
+    host: '127.0.0.1'
+    port: 3306
+    dbname: 'dawis'
+    username: 'dawis'
+    password: 'dawis'
+
+#  orm: 'mysql://username:password@127.0.0.1/database'
+#  bigquery:
+#    project: 'project-id'
+#    dataset:
+#      name: 'project-name'
+#      location: 'location-id'
+#      description: 'Some nice description for your dataset'
+#      labels:
+#        environment: 'test'
+#    credentials: './credentials.json'
+
+urlsets:
+  owndomains:
+    - url: 'https://www.owndomain.de/homepage.html'
+    - url: 'https://www.owndomain.de/somesubpage.html'
+    - url: 'https://www.owndomain.de/problems.html'
+  otherset:
+    - url: 'https://www.otherdomain.de/homepage.html'
+    - url: 'https://www.otherdomain.de/subpage.html'
+    - url: 'https://www.otherdomain.de/othersubpage.html'
+    - url: 'https://www.seconddomain.de/homepage.html'
+    - url: 'https://www.thirddomain.de/homepage.html'
+  shop:
+    - url: 'https://www.ownshop.de/category/shirt.html'
+    - url: 'https://www.ownshop.de/category/shirt/blue.html'
+    - url: 'https://www.ownshop.de/category/shirt/black.html'
+    - url: 'https://www.ownshop.de/category/shirt/classic.html'
+    - url: 'https://www.ownshop.de/category/shoes.html'
+  robotstxtcheck:
+    - url: 'https://www.owndomain.de/robots.txt'
+    - url: 'https://www.otherdomain.de/robots.txt'
+    - url: 'https://www.seconddomain.de/robots.txt'
+    - url: 'https://www.thirddomain.de/robots.txt'
+
+aggregations:
+  crawler:
+    cron: '*/2 * * * *'
+    urlsets:
+      - 'owndomains'
+      - 'otherset'
+      - 'shop'
+    settings:
+      useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+  pagespeed:
+    cron: '0 * * * *'
+    urlsets:
+      - 'owndomains'
+    settings:
+      apikey: ''
+      useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+  robotstxt:
+    cron: '*/10 * * * *'
+    urlsets:
+      - 'robotstxtcheck'
+    settings:
+      useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+operations:
+  htmlheadings:
+    cron: '*/5 * * * *'
+    database: 'orm'
+    urlsets:
+      - url: 'owndomains'
+        checks:
+          count_headline_h1: 1
+      - url: 'shop'
+        checks:
+          count_headline_h1: 1
+  metatags:
+    cron: '*/5 * * * *'
+    database: 'orm'
+    urlsets:
+      - url: 'owndomains'
+        checks:
+          title:
+            has_title: true
+            is_title_empty: false
+            has_title_changed: false
+            has_title_duplicates: false
+          description:
+            has_description: true
+            is_description_empty: false
+            has_description_changed: false
+            has_description_duplicates: false
+          canonical:
+            has_canonical: true
+            canonical_is_self_referencing: true
+            canonical_href_not_200: true
+      - url: 'otherset'
+        checks:
+          title:
+            has_title: true
+            is_title_empty: false
+            has_title_changed: false
+            has_title_duplicates: false
+          description:
+            has_description: true
+            is_description_empty: false
+            has_description_changed: false
+            has_description_duplicates: false
+          canonical:
+            has_canonical: true
+            canonical_is_self_referencing: true
+            canonical_href_not_200: true
+      - url: 'shop'
+        checks:
+          title:
+            has_title: true
+            is_title_empty: false
+            has_title_changed: false
+            has_title_duplicates: false
+          description:
+            has_description: true
+            is_description_empty: false
+            has_description_changed: false
+            has_description_duplicates: false
+          canonical:
+            has_canonical: true
+            canonical_is_self_referencing: true
+            canonical_href_not_200: true
+  responseheader:
+    cron: '*/5 * * * *'
+    database: 'orm'
+    urlsets:
+      - url: 'owndomains'
+        checks:
+          status_code:
+            assert: 200
+          content_encoding:
+            assert: 'gzip'
+          cache_control:
+            assert: 'no-cache'
+          expires:
+            assert: 0
+          x_canonical:
+            assert: true
+          no_index:
+            assert: false
+      - url: 'otherset'
+        checks:
+          status_code:
+            assert: 200
+          content_encoding:
+            assert: 'gzip'
+          cache_control:
+            assert: 'no-cache'
+          expires:
+            assert: 0
+          x_canonical:
+            assert: true
+          no_index:
+            assert: false
+  pagespeed:
+    cron: '*/5 * * * *'
+    database: 'orm'
+    checks:
+      fcp_score:
+        desktop: 0.49
+        mobile: 0.49
+      fcp_display:
+        desktop: 4000
+        mobile: 4000
+      tti_score:
+        desktop: 0.49
+        mobile: 0.49
+      tti_display:
+        desktop: 4000
+        mobile: 4000
+      ttfb_score:
+        desktop: 0.49
+        mobile: 0.49
+      ttfb_display:
+        desktop: 600
+        mobile: 600
+      performance_score:
+        desktop: 0.5
+        mobile: 0.5
+      uses_optimized_images:
+        desktop: 0.5
+        mobile: 0.5
+      render_blocking_resources:
+        desktop: 0.5
+        mobile: 0.5
+      uses_text_compression:
+        desktop: 0.5
+        mobile: 0.5
+      uses_long_cache_ttl:
+        desktop: 0.5
+        mobile: 0.5
+      unminified_css:
+        desktop: 0.5
+        mobile: 0.5
+      unminified_js:
+        desktop: 0.5
+        mobile: 0.5
+  robotstxt:
+    cron: '*/5 * * * *'
+    database: 'orm'
+    urlsets:
+      - url: 'robotstxtcheck'
+        checks:
+          status_code: 200
+          has_sitemap_xml: true
