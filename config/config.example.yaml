@@ -99,7 +99,7 @@ operations:
           canonical:
             has_canonical: true
             canonical_is_self_referencing: true
-            canonical_href_not_200: true
+            canonical_href_200: true
       - url: 'otherset'
         checks:
           title:
@@ -115,7 +115,7 @@ operations:
           canonical:
             has_canonical: true
             canonical_is_self_referencing: true
-            canonical_href_not_200: true
+            canonical_href_200: true
       - url: 'shop'
         checks:
           title:
@@ -131,7 +131,7 @@ operations:
           canonical:
             has_canonical: true
             canonical_is_self_referencing: true
-            canonical_href_not_200: true
+            canonical_href_200: true
   responseheader:
     cron: '*/5 * * * *'
     database: 'orm'

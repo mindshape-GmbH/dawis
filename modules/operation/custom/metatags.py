@@ -58,7 +58,7 @@ class Metatags:
 
                         self.check_has_canonical(crawl, urlset_name, urlset_config)
                         self.check_canonical_is_self_referencing(crawl, urlset_name, urlset_config)
-                        self.check_canonical_href_not_200(crawl, urlset_name, urlset_config)
+                        self.check_canonical_href_200(crawl, urlset_name, urlset_config)
 
                         self.mongodb.update_one(
                             Crawler.COLLECTION_NAME,
@@ -769,10 +769,10 @@ class Metatags:
 
                 print(' ... ' + 'self_referencing' + str(valid))
 
-    def check_canonical_href_not_200(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_canonical_href_200(self, crawl: dict, urlset_name: str, urlset_config: dict):
         if 'canonical' in urlset_config:
-            if 'canonical_href_not_200' in urlset_config['canonical']:
-                assert_val = urlset_config['canonical']['canonical_href_not_200']
+            if 'canonical_href_200' in urlset_config['canonical']:
+                assert_val = urlset_config['canonical']['canonical_href_200']
 
                 valid = False
                 url = crawl['url']
@@ -793,7 +793,7 @@ class Metatags:
                 self.check_service.add_check(
                     self.metatags_config.database,
                     crawl['urlset'],
-                    'metatags-canonical_href_not_200',
+                    'metatags-canonical_href_200',
                     value,
                     valid,
                     '',
