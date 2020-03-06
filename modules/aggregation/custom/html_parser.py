@@ -7,6 +7,7 @@ from typing import Sequence
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
+from lxml import html
 import requests
 
 
@@ -74,6 +75,7 @@ def _process_url(urlset: str, url: str, renderbool: bool, settings: dict, config
         num_redirects = 0
         redirects = []
         ttfb = response.elapsed.microseconds / 1000.0
+        xpath_data = {}
 
         if response.history:
             for resp in response.history:
@@ -92,10 +94,13 @@ def _process_url(urlset: str, url: str, renderbool: bool, settings: dict, config
             body = _render_url(url) if renderbool else response.content
             if type(body) is bytes:
                 body = body.decode('utf-8')
+            if 'xpath' in settings:
+                xpath_data = _parse_xpath(body, settings['xpath'])
         else:
             body = 'Can\'t use content-type "' + content_type + '" for parsing'
     except requests.RequestException as error:
         body = 'Error: ' + str(error)
+        xpath_data = {}
         headers = {}
         status_code = 0
         num_redirects = 0
@@ -110,10 +115,25 @@ def _process_url(urlset: str, url: str, renderbool: bool, settings: dict, config
         'redirects': redirects,
         'ttfb': ttfb,
         'body': body,
+        'xpath': xpath_data,
         'rendered': renderbool,
         'date': datetime.utcnow(),
         'headers': headers,
         'configuration_hash': config_hash,
+    }
+
+
+def _parse_xpath(body: str, settings_xpaths: dict) -> dict:
+    root = html.fromstring(body)
+
+    return {
+        label: [
+            {
+                'attributes': {key: value for key, value in element.attrib.items()},
+                'tag': element.tag,
+                'text': element.text.strip() if element.text is not None else '',
+            } for element in root.xpath(xpath)
+        ] for label, xpath in settings_xpaths.items()
     }
 
 
@@ -124,9 +144,9 @@ def _render_url(url: str) -> str:
         chrome_options.add_argument('--headless')
         driver = webdriver.Chrome(options=chrome_options)
         driver.get(url)
-        html = driver.page_source.encode('utf-8')
+        rendered_html = driver.page_source.encode('utf-8')
         driver.close()
     except WebDriverException:
-        html = 'Error: chromedriver not configured properly'
+        rendered_html = 'Error: chromedriver not configured properly'
 
-    return html
+    return rendered_html
