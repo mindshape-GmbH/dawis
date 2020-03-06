@@ -2,7 +2,7 @@ from database.connection import Connection
 from service.check import Check
 from utilities.configuration import Configuration
 from utilities.exceptions import ConfigurationMissingError
-from modules.aggregation.custom.crawler import Crawler
+from modules.aggregation.custom.html_parser import HtmlParser
 from bs4 import BeautifulSoup
 import requests
 from utilities.url import URL
@@ -22,18 +22,18 @@ class Metatags:
         if len(self.metatags_config.urlsets) > 0:
             print('Running operation metatags:', "\n")
 
-            if not self.mongodb.has_collection(Crawler.COLLECTION_NAME):
+            if not self.mongodb.has_collection(HtmlParser.COLLECTION_NAME):
                 return
 
             for urlset in self.metatags_config.urlsets:
-                print(' - "' + urlset['url'] + '":')
+                print(' - "' + str(urlset['url']) + '":')
 
                 for single_urlset in urlset:
 
                     urlset_name = urlset[single_urlset]
 
-                    crawls = self.mongodb.find(
-                        Crawler.COLLECTION_NAME,
+                    parsed_data = self.mongodb.find(
+                        HtmlParser.COLLECTION_NAME,
                         {
                             'urlset': urlset_name,
                             'processed_metatags': {'$exists': False}
@@ -42,27 +42,27 @@ class Metatags:
 
                     urlset_config = urlset['checks']
 
-                    self.check_has_title_duplicates(crawls, urlset_name, urlset_config)
-                    self.check_has_description_duplicates(crawls, urlset_name, urlset_config)
+                    self.check_has_title_duplicates(parsed_data, urlset_name, urlset_config)
+                    self.check_has_description_duplicates(parsed_data, urlset_name, urlset_config)
 
-                    for crawl in crawls:
-                        print('   + ' + str(crawl['url']))
+                    for data in parsed_data:
+                        print('   + ' + str(data['url']))
 
-                        self.check_has_title(crawl, urlset_name, urlset_config)
-                        self.check_is_title_empty(crawl, urlset_name, urlset_config)
-                        self.check_has_title_changed(crawl, urlset_name, urlset_config)
+                        self.check_has_title(data, urlset_name, urlset_config)
+                        self.check_is_title_empty(data, urlset_name, urlset_config)
+                        self.check_has_title_changed(data, urlset_name, urlset_config)
 
-                        self.check_has_description(crawl, urlset_name, urlset_config)
-                        self.check_is_description_empty(crawl, urlset_name, urlset_config)
-                        self.check_has_description_changed(crawl, urlset_name, urlset_config)
+                        self.check_has_description(data, urlset_name, urlset_config)
+                        self.check_is_description_empty(data, urlset_name, urlset_config)
+                        self.check_has_description_changed(data, urlset_name, urlset_config)
 
-                        self.check_has_canonical(crawl, urlset_name, urlset_config)
-                        self.check_canonical_is_self_referencing(crawl, urlset_name, urlset_config)
-                        self.check_canonical_href_200(crawl, urlset_name, urlset_config)
+                        self.check_has_canonical(data, urlset_name, urlset_config)
+                        self.check_canonical_is_self_referencing(data, urlset_name, urlset_config)
+                        self.check_canonical_href_200(data, urlset_name, urlset_config)
 
                         self.mongodb.update_one(
-                            Crawler.COLLECTION_NAME,
-                            crawl['_id'],
+                            HtmlParser.COLLECTION_NAME,
+                            data['_id'],
                             {'processed_metatags': True}
                         )
 
@@ -70,9 +70,9 @@ class Metatags:
 
     # METATAG TITLE
 
-    def get_metatitle(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def get_metatitle(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'title' in urlset_config:
-            doc = BeautifulSoup(crawl['body'], "html.parser")
+            doc = BeautifulSoup(data['body'], "html.parser")
             titles = doc.find_all("title")
 
             problem_detected = {'multi': False, 'empty': False}
@@ -86,8 +86,8 @@ class Metatags:
 
             return problem_detected
 
-    def save_problem_multi_title(self, multi: bool, crawl):
-        url = crawl['url']
+    def save_problem_multi_title(self, multi: bool, data):
+        url = data['url']
 
         value = ''
         error = ''
@@ -100,7 +100,7 @@ class Metatags:
 
         self.check_service.add_check(
             self.metatags_config.database,
-            crawl['urlset'],
+            data['urlset'],
             'metatags-has_multiple_titles',
             value,
             valid,
@@ -112,7 +112,7 @@ class Metatags:
             url.query,
         )
 
-    def check_has_title(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_has_title(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'title' in urlset_config:
             if 'has_title' in urlset_config['title']:
                 assert_val = urlset_config['title']['has_title']
@@ -124,7 +124,7 @@ class Metatags:
                 empty = False
                 titles = {}
 
-                titles = self.get_metatitle(crawl, urlset_name, urlset_config)
+                titles = self.get_metatitle(data, urlset_name, urlset_config)
                 if 'multi' in titles:
                     if titles['multi']:
                         multi = True
@@ -139,7 +139,7 @@ class Metatags:
                                 if exists == assert_val:
                                     valid = True
 
-                    url = crawl['url']
+                    url = data['url']
 
                     error = ''
                     if len(titles) == 0 and not valid:
@@ -147,7 +147,7 @@ class Metatags:
 
                     self.check_service.add_check(
                         self.metatags_config.database,
-                        crawl['urlset'],
+                        data['urlset'],
                         'metatags-has_title',
                         value,
                         valid,
@@ -161,9 +161,9 @@ class Metatags:
 
                     print(' ... has title ' + str(valid))
 
-                self.save_problem_multi_title(multi, crawl)
+                self.save_problem_multi_title(multi, data)
 
-    def check_is_title_empty(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_is_title_empty(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'title' in urlset_config:
             if 'is_title_empty' in urlset_config['title']:
                 assert_val = urlset_config['title']['is_title_empty']
@@ -172,7 +172,7 @@ class Metatags:
 
                 valid = False
 
-                titles = self.get_metatitle(crawl, urlset_name, urlset_config)
+                titles = self.get_metatitle(data, urlset_name, urlset_config)
                 value = ''
 
                 empty = False
@@ -184,7 +184,7 @@ class Metatags:
                     if empty == assert_val:
                         valid = True
 
-                url = crawl['url']
+                url = data['url']
 
                 error = ''
                 if empty and valid:
@@ -192,7 +192,7 @@ class Metatags:
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-is_title_empty',
                     value,
                     valid,
@@ -206,14 +206,14 @@ class Metatags:
 
                 print(' ... is title empty ' + str(valid))
 
-    def check_has_title_changed(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_has_title_changed(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'title' in urlset_config:
             if 'has_title_changed' in urlset_config['title']:
                 assert_val = urlset_config['title']['has_title_changed']
 
                 valid = False
 
-                titles_new = self.get_metatitle(crawl, urlset_name, urlset_config)
+                titles_new = self.get_metatitle(data, urlset_name, urlset_config)
                 value_new = ''
 
                 if len(titles_new) == 1:
@@ -221,22 +221,22 @@ class Metatags:
                         if title != '':
                             value_new = str(title)
 
-                last_crawls = self.mongodb.find_last_sorted(
-                    Crawler.COLLECTION_NAME,
+                last_parsed_data = self.mongodb.find_last_sorted(
+                    HtmlParser.COLLECTION_NAME,
                     {
-                        'url.protocol': crawl['url'].protocol,
-                        'url.domain': crawl['url'].domain,
-                        'url.path': crawl['url'].path,
-                        'url.query': crawl['url'].query,
+                        'url.protocol': data['url'].protocol,
+                        'url.domain': data['url'].domain,
+                        'url.path': data['url'].path,
+                        'url.query': data['url'].query,
                         'processed_metatags': {'$exists': True}
                     },
                     [('date', -1)]
                 )
 
                 value_last = ''
-                for last_crawl in last_crawls:
+                for last_data in last_parsed_data:
 
-                    titles_last = self.get_metatitle(last_crawl, urlset_name, urlset_config)
+                    titles_last = self.get_metatitle(last_data, urlset_name, urlset_config)
 
                     if len(titles_last) == 1:
                         for title in titles_last:
@@ -256,11 +256,11 @@ class Metatags:
                     diff = str(value_last)
                     error = 'title has changed'
 
-                url = crawl['url']
+                url = data['url']
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-has_title_changed',
                     value_new,
                     valid,
@@ -274,7 +274,7 @@ class Metatags:
 
                 print(' ... has title changed ' + str(valid))
 
-    def check_has_title_duplicates(self, crawls: dict, urlset_name: str, urlset_config: dict):
+    def check_has_title_duplicates(self, parsed_data: dict, urlset_name: str, urlset_config: dict):
         if 'title' in urlset_config:
             if 'has_title_duplicates' in urlset_config['title']:
                 assert_val = urlset_config['title']['has_title_duplicates']
@@ -283,17 +283,17 @@ class Metatags:
 
                 titles_dict = {}
 
-                for crawl in crawls:
+                for data in parsed_data:
 
-                    # dict_key = str(crawl['url'])
+                    # dict_key = str(data['url'])
 
-                    doc = BeautifulSoup(crawl['body'], "html.parser")
+                    doc = BeautifulSoup(data['body'], "html.parser")
                     titles = doc.find_all("title")
 
                     if len(titles) == 1:
                         for title in titles:
                             if title != '':
-                                titles_dict[str(crawl['url'])] = title
+                                titles_dict[str(data['url'])] = title
 
                 title_sorted = {}
 
@@ -320,8 +320,8 @@ class Metatags:
                             valid = True
                         value = str(key_title)
                         urlset = ''
-                        for crawl in crawls:
-                            urlset = crawl['urlset']
+                        for data in parsed_data:
+                            urlset = data['urlset']
 
                         self.check_service.add_check(
                             self.metatags_config.database,
@@ -355,8 +355,8 @@ class Metatags:
                                     diff += ', ' + other_url
 
                         urlset = ''
-                        for crawl in crawls:
-                            urlset = crawl['urlset']
+                        for data in parsed_data:
+                            urlset = data['urlset']
 
                         error = ''
                         if dup and not valid:
@@ -378,9 +378,9 @@ class Metatags:
 
     # METATAG DESCRIPTION
 
-    def get_metadescription(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def get_metadescription(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'description' in urlset_config:
-            doc = BeautifulSoup(crawl['body'], "html.parser")
+            doc = BeautifulSoup(data['body'], "html.parser")
             metas = doc.find_all("meta", attrs={'name': 'description'})
 
             problem_detected = {'multi': False, 'empty': False}
@@ -394,8 +394,8 @@ class Metatags:
 
             return problem_detected
 
-    def save_problem_multi_description(self, multi: bool, crawl):
-        url = crawl['url']
+    def save_problem_multi_description(self, multi: bool, data):
+        url = data['url']
 
         value = ''
         error = ''
@@ -408,7 +408,7 @@ class Metatags:
 
         self.check_service.add_check(
             self.metatags_config.database,
-            crawl['urlset'],
+            data['urlset'],
             'metatags-has_multiple_descriptions',
             value,
             valid,
@@ -420,7 +420,7 @@ class Metatags:
             url.query,
         )
 
-    def check_has_description(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_has_description(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'description' in urlset_config:
             if 'has_description' in urlset_config['description']:
                 assert_val = urlset_config['description']['has_description']
@@ -432,7 +432,7 @@ class Metatags:
                 empty = False
                 titles = {}
 
-                metas = self.get_metadescription(crawl, urlset_name, urlset_config)
+                metas = self.get_metadescription(data, urlset_name, urlset_config)
 
                 if 'multi' in metas:
                     if metas['multi']:
@@ -447,11 +447,11 @@ class Metatags:
                             if exists == assert_val:
                                 valid = True
 
-                        url = crawl['url']
+                        url = data['url']
 
                         self.check_service.add_check(
                             self.metatags_config.database,
-                            crawl['urlset'],
+                            data['urlset'],
                             'metatags-has_description',
                             value,
                             valid,
@@ -465,9 +465,9 @@ class Metatags:
 
                         print(' ... has title ' + str(valid))
 
-                self.save_problem_multi_description(multi, crawl)
+                self.save_problem_multi_description(multi, data)
 
-    def check_is_description_empty(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_is_description_empty(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'description' in urlset_config:
             if 'is_description_empty' in urlset_config['description']:
                 assert_val = urlset_config['description']['is_description_empty']
@@ -476,7 +476,7 @@ class Metatags:
 
                 valid = False
 
-                metas = self.get_metadescription(crawl, urlset_name, urlset_config)
+                metas = self.get_metadescription(data, urlset_name, urlset_config)
                 empty = False
 
                 if 'multi' in metas:
@@ -496,11 +496,11 @@ class Metatags:
                     if empty and not valid:
                         error = 'description is empty'
 
-                    url = crawl['url']
+                    url = data['url']
 
                     self.check_service.add_check(
                         self.metatags_config.database,
-                        crawl['urlset'],
+                        data['urlset'],
                         'metatags-is_description_empty',
                         value,
                         valid,
@@ -514,14 +514,14 @@ class Metatags:
 
                     print(' ... ' + str(valid))
 
-    def check_has_description_changed(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_has_description_changed(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'description' in urlset_config:
             if 'has_description_changed' in urlset_config['description']:
                 assert_val = urlset_config['description']['has_description_changed']
 
                 valid = False
 
-                descriptions_new = self.get_metadescription(crawl, urlset_name, urlset_config)
+                descriptions_new = self.get_metadescription(data, urlset_name, urlset_config)
                 value_new = ''
 
                 if len(descriptions_new) == 1:
@@ -529,22 +529,22 @@ class Metatags:
                         if description != '':
                             value_new = str(description)
 
-                last_crawls = self.mongodb.find_last_sorted(
-                    Crawler.COLLECTION_NAME,
+                last_parsed_data = self.mongodb.find_last_sorted(
+                    HtmlParser.COLLECTION_NAME,
                     {
-                        'url.protocol': crawl['url'].protocol,
-                        'url.domain': crawl['url'].domain,
-                        'url.path': crawl['url'].path,
-                        'url.query': crawl['url'].query,
+                        'url.protocol': data['url'].protocol,
+                        'url.domain': data['url'].domain,
+                        'url.path': data['url'].path,
+                        'url.query': data['url'].query,
                         'processed_metatags': {'$exists': True}
                     },
                     [('date', -1)]
                 )
 
                 value_last = ''
-                for last_crawl in last_crawls:
+                for last_data in last_parsed_data:
 
-                    descriptions_last = self.get_metadescription(last_crawl, urlset_name, urlset_config)
+                    descriptions_last = self.get_metadescription(last_data, urlset_name, urlset_config)
 
                     if len(descriptions_last) == 1:
                         for description in descriptions_last:
@@ -566,11 +566,11 @@ class Metatags:
                 if not valid and check_result:
                     error = 'description has changed'
 
-                url = crawl['url']
+                url = data['url']
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-has_description_changed',
                     value_new,
                     valid,
@@ -582,7 +582,7 @@ class Metatags:
                     url.query,
                 )
 
-    def check_has_description_duplicates(self, crawls: dict, urlset_name: str, urlset_config: dict):
+    def check_has_description_duplicates(self, parsed_data: dict, urlset_name: str, urlset_config: dict):
         if 'description' in urlset_config:
             if 'has_description_duplicates' in urlset_config['description']:
                 assert_val = urlset_config['description']['has_description_duplicates']
@@ -591,17 +591,17 @@ class Metatags:
 
                 descriptions_dict = {}
 
-                for crawl in crawls:
+                for data in parsed_data:
 
-                    # dict_key = str(crawl['url'])
+                    # dict_key = str(data['url'])
 
-                    doc = BeautifulSoup(crawl['body'], "html.parser")
+                    doc = BeautifulSoup(data['body'], "html.parser")
                     descriptions = doc.find_all("meta", attrs={'name': 'description'})
 
                     if len(descriptions) == 1:
                         for description in descriptions:
                             if description.get('content') != '':
-                                descriptions_dict[str(crawl['url'])] = description.get('content')
+                                descriptions_dict[str(data['url'])] = description.get('content')
 
                 description_sorted = {}
 
@@ -628,8 +628,8 @@ class Metatags:
                             valid = True
                         value = str(key_description)
                         urlset = ''
-                        for crawl in crawls:
-                            urlset = crawl['urlset']
+                        for data in parsed_data:
+                            urlset = data['urlset']
 
                         self.check_service.add_check(
                             self.metatags_config.database,
@@ -663,8 +663,8 @@ class Metatags:
                                     diff += ', ' + other_url
 
                         urlset = ''
-                        for crawl in crawls:
-                            urlset = crawl['urlset']
+                        for data in parsed_data:
+                            urlset = data['urlset']
 
                         error = ''
                         if dup and not valid:
@@ -686,10 +686,10 @@ class Metatags:
 
     # METATAG CANONICAL
 
-    def get_canonical_href(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def get_canonical_href(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'canonical' in urlset_config:
 
-            doc = BeautifulSoup(crawl['body'], "html.parser")
+            doc = BeautifulSoup(data['body'], "html.parser")
             links = doc.find_all("link", rel='canonical')
             href = ''
 
@@ -698,7 +698,7 @@ class Metatags:
 
             return href
 
-    def check_has_canonical(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_has_canonical(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'canonical' in urlset_config:
             if 'has_canonical' in urlset_config['canonical']:
                 assert_val = urlset_config['canonical']['has_canonical']
@@ -708,14 +708,14 @@ class Metatags:
                 valid = False
                 exists = False
 
-                canonical_href = self.get_canonical_href(crawl, urlset_name, urlset_config)
+                canonical_href = self.get_canonical_href(data, urlset_name, urlset_config)
                 value = str(canonical_href)
                 if canonical_href != '':
                     exists = True
                     if exists == assert_val:
                         valid = True
 
-                url = crawl['url']
+                url = data['url']
 
                 error = ''
                 if not exists and not valid:
@@ -723,7 +723,7 @@ class Metatags:
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-has_canonical',
                     value,
                     valid,
@@ -737,15 +737,15 @@ class Metatags:
 
                 print(' ... ' + str(valid))
 
-    def check_canonical_is_self_referencing(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_canonical_is_self_referencing(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'canonical' in urlset_config:
             if 'canonical_is_self_referencing' in urlset_config['canonical']:
                 assert_val = urlset_config['canonical']['canonical_is_self_referencing']
 
                 valid = False
-                url = crawl['url']
+                url = data['url']
 
-                canonical_href = self.get_canonical_href(crawl, urlset_name, urlset_config)
+                canonical_href = self.get_canonical_href(data, urlset_name, urlset_config)
                 value = str(canonical_href)
                 if canonical_href != '':
                     if canonical_href == str(url):
@@ -755,7 +755,7 @@ class Metatags:
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-canonical_is_self_referencing',
                     value,
                     valid,
@@ -769,17 +769,17 @@ class Metatags:
 
                 print(' ... ' + 'self_referencing' + str(valid))
 
-    def check_canonical_href_200(self, crawl: dict, urlset_name: str, urlset_config: dict):
+    def check_canonical_href_200(self, data: dict, urlset_name: str, urlset_config: dict):
         if 'canonical' in urlset_config:
             if 'canonical_href_200' in urlset_config['canonical']:
                 assert_val = urlset_config['canonical']['canonical_href_200']
 
                 valid = False
-                url = crawl['url']
+                url = data['url']
 
                 response_200 = False
                 error = ''
-                canonical_href = self.get_canonical_href(crawl, urlset_name, urlset_config)
+                canonical_href = self.get_canonical_href(data, urlset_name, urlset_config)
                 value = str(canonical_href)
                 if canonical_href != '':
                     response = requests.get(canonical_href)
@@ -792,7 +792,7 @@ class Metatags:
 
                 self.check_service.add_check(
                     self.metatags_config.database,
-                    crawl['urlset'],
+                    data['urlset'],
                     'metatags-canonical_href_200',
                     value,
                     valid,

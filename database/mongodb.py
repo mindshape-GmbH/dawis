@@ -105,3 +105,11 @@ class MongoDB:
         result = self.get_collection(collection_name, False).find(filter=filter_parameter, limit=1, sort=sort)
 
         return [self._init_url(document) for document in result]
+
+    def migrations(self):
+        try:
+            collection = self.get_collection('crawler', False)
+            from modules.aggregation.custom.html_parser import HtmlParser
+            collection.rename(HtmlParser.COLLECTION_NAME)
+        except CollectionDoesNotExist:
+            pass

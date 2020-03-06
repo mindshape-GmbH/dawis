@@ -2,7 +2,7 @@ from database.connection import Connection
 from service.check import Check
 from utilities.configuration import Configuration
 from utilities.exceptions import ConfigurationMissingError
-from modules.aggregation.custom.crawler import Crawler
+from modules.aggregation.custom.html_parser import HtmlParser
 from bs4 import BeautifulSoup
 
 
@@ -20,17 +20,17 @@ class Htmlheadings:
         if len(self.htmlheadings_config.urlsets) > 0:
             print('Running operation htmlheadings:', "\n")
 
-            if not self.mongodb.has_collection(Crawler.COLLECTION_NAME):
+            if not self.mongodb.has_collection(HtmlParser.COLLECTION_NAME):
                 return
 
             for urlset in self.htmlheadings_config.urlsets:
-                print(' - "' + urlset['url'] + '":')
+                print(' - "' + str(urlset['url']) + '":')
 
                 for single_urlset in urlset:
                     urlset_name = urlset[single_urlset]
 
-                    crawls = self.mongodb.find(
-                        Crawler.COLLECTION_NAME,
+                    parsed_data = self.mongodb.find(
+                        HtmlParser.COLLECTION_NAME,
                         {
                             'urlset': urlset_name,
                             'processed_htmlheadings': {'$exists': False}
@@ -39,20 +39,20 @@ class Htmlheadings:
 
                     urlset_config = urlset['checks']
 
-                    for crawl in crawls:
-                        print('   + ' + str(crawl['url']))
+                    for data in parsed_data:
+                        print('   + ' + str(data['url']))
 
-                        self.check_count_headline_h1(crawl, urlset_config)
+                        self.check_count_headline_h1(data, urlset_config)
 
                         self.mongodb.update_one(
-                            Crawler.COLLECTION_NAME,
-                            crawl['_id'],
+                            HtmlParser.COLLECTION_NAME,
+                            data['_id'],
                             {'processed_htmlheadings': True}
                         )
 
                 print("\n")
 
-    def check_count_headline_h1(self, crawl: dict, urlset_config: dict):
+    def check_count_headline_h1(self, data: dict, urlset_config: dict):
         if 'count_headline_h1' in urlset_config:
             assert_val = urlset_config['count_headline_h1']
 
@@ -61,7 +61,7 @@ class Htmlheadings:
             valid = False
             error = ''
 
-            doc = BeautifulSoup(crawl['body'], "html.parser")
+            doc = BeautifulSoup(data['body'], "html.parser")
             count_headline = 0
 
             for headline in doc.select("h1"):
@@ -73,11 +73,11 @@ class Htmlheadings:
             if count_headline > 1 and not valid:
                 error = 'more than one headline detected'
 
-            url = crawl['url']
+            url = data['url']
 
             self.check_service.add_check(
                 self.htmlheadings_config.database,
-                crawl['urlset'],
+                data['urlset'],
                 'htmlheadings-count_headline_h1',
                 str(count_headline),
                 valid,

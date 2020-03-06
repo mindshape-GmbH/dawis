@@ -10,30 +10,30 @@ from selenium.common.exceptions import WebDriverException
 import requests
 
 
-class Crawler:
+class HtmlParser:
     DEFAULT_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
-    COLLECTION_NAME = 'crawler'
+    COLLECTION_NAME = 'html_parser'
 
     def __init__(self, configuration: Configuration, connection: Connection):
         self.configuration = configuration
         self.connection = connection
 
     def run(self):
-        print('Running aggregation crawler:')
+        print('Running aggregation html_parser:')
 
-        crawler_config = self.configuration.aggregations.get_custom_configuration_aggregation('crawler')
-        crawler_urlsets = crawler_config.urlsets
-        crawler_settings = crawler_config.settings
+        html_parser_config = self.configuration.aggregations.get_custom_configuration_aggregation('html_parser')
+        html_parser_urlsets = html_parser_config.urlsets
+        html_parser_settings = html_parser_config.settings
 
-        crawled_urls = []
+        data = []
 
         for urlset in self.configuration.urlsets.urlsets:
-            for urlset_name in crawler_urlsets:
+            for urlset_name in html_parser_urlsets:
                 if urlset_name == urlset.name:
                     config_hash = self.configuration.hash
-                    crawled_urls.extend(_process_urlset(urlset, crawler_settings, config_hash))
+                    data.extend(_process_urlset(urlset, html_parser_settings, config_hash))
 
-        self.connection.mongodb.insert_documents(Crawler.COLLECTION_NAME, crawled_urls)
+        self.connection.mongodb.insert_documents(HtmlParser.COLLECTION_NAME, data)
 
 
 def _process_urlset(configuration_urlset: ConfigurationUrlset, settings: dict, config_hash: str) -> Sequence[dict]:
@@ -65,7 +65,7 @@ def _process_urlset(configuration_urlset: ConfigurationUrlset, settings: dict, c
 def _process_url(urlset: str, url: str, renderbool: bool, settings: dict, config_hash: str) -> dict:
     try:
         headers = {
-            'User-agent': settings['useragent'] if settings['useragent'] else Crawler.DEFAULT_USER_AGENT
+            'User-agent': settings['useragent'] if settings['useragent'] else HtmlParser.DEFAULT_USER_AGENT
         }
 
         response = requests.get(url, headers=headers)
@@ -93,7 +93,7 @@ def _process_url(urlset: str, url: str, renderbool: bool, settings: dict, config
             if type(body) is bytes:
                 body = body.decode('utf-8')
         else:
-            body = 'Can\'t use content-type "' + content_type + '" for crawling'
+            body = 'Can\'t use content-type "' + content_type + '" for parsing'
     except requests.RequestException as error:
         body = 'Error: ' + str(error)
         headers = {}

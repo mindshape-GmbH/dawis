@@ -48,7 +48,7 @@ urlsets:
     - url: 'https://www.thirddomain.de/robots.txt'
 
 aggregations:
-  crawler:
+  html_parser:
     cron: '*/2 * * * *'
     urlsets:
       - 'owndomains'

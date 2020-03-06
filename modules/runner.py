@@ -3,6 +3,7 @@ from utilities.configuration import Configuration
 from utilities.exceptions import ExitError
 from utilities.path import Path
 from celery import task
+import tocamelcase
 import importlib
 import pickle
 
@@ -19,7 +20,7 @@ def run(configuration_hash: str, module: str, module_namespace: str):
     connection = Connection(configuration)
 
     for customattribute in dir(custommodule):
-        if customattribute == module.capitalize():
+        if customattribute == tocamelcase.convert(module):
             customclass = getattr(custommodule, customattribute)
             customclass(configuration, connection).run()
 

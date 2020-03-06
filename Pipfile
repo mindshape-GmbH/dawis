@@ -20,6 +20,7 @@ celery = "*"
 redis = "*"
 croniter = "*"
 sqlalchemy-utils = "*"
+tocamelcase = "*"
 
 [requires]
 python_version = "3.8"

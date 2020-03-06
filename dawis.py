@@ -21,6 +21,9 @@ for configuration in configurations:
         if connection.has_orm():
             connection.orm.tables.create_tables()
 
+        if connection.has_mongodb():
+            connection.mongodb.migrations()
+
     with open(Path.var_folder_path() + '/' + configuration.hash + '.pickle', 'wb') as handle:
         pickle.dump(configuration, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
