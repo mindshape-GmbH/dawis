@@ -57,6 +57,10 @@ class MongoDB:
     def is_connected(self):
         return self._connected
 
+    @property
+    def client(self) -> MongoClient:
+        return self._client
+
     @staticmethod
     def _init_url(document: dict) -> dict:
         if type(document) is dict and 'url' in document:
@@ -85,11 +89,17 @@ class MongoDB:
     def update_one(self, collection_name: str, document_id: ObjectId, update_data: dict):
         self.get_collection(collection_name, False).find_one_and_update({'_id': document_id}, {'$set': update_data})
 
-    def find(self, collection_name: str, filter_parameter: dict, raw: bool = False):
+    def find(self, collection_name: str, filter_parameter: dict, raw: bool = False, limit: int = 0, offset: int = 0):
         result = self.get_collection(collection_name, False).find(filter_parameter)
 
+        if 0 < offset:
+            result.skip(offset)
+
+        if 0 < limit:
+            result.limit(limit)
+
         if raw is True:
-            return result
+            return list(result)
 
         return [self._init_url(document) for document in result]
 

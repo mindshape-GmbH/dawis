@@ -6,13 +6,22 @@ from utilities.exceptions import Error
 from utilities.exceptions import ConfigurationMissingError
 from utilities.exceptions import TableDoesNotExistError
 from google.cloud import bigquery
+from google.cloud.bigquery import Client
 from google.cloud.bigquery.dataset import Dataset
+from google.cloud.bigquery.dataset import DatasetReference
 from google.cloud.bigquery.schema import SchemaField
-from google.cloud.bigquery.table import Table
+from google.cloud.bigquery.table import Table, TableReference
 from google.cloud.bigquery.job import QueryJob
+from google.cloud.exceptions import BadRequest
 from google.oauth2 import service_account
 from datetime import datetime
 from typing import Sequence
+
+
+class QueryError(Exception):
+    def __init__(self, errors: list, query):
+        self.errors = errors
+        self.query = query
 
 
 class DatasetDoesNotExistError(Error):
@@ -74,6 +83,42 @@ class BigQuery:
 
     def is_connected(self):
         return self._connected
+
+    @property
+    def client(self) -> Client:
+        return self._client
+
+    def table_reference(self, table_name: str, dataset_name: str = None) -> TableReference:
+        if dataset_name is not None:
+            if dataset_name not in self._configuration.databases.bigquery.additional_datasets:
+                raise DatasetDoesNotExistError('The dataset "' + dataset_name + '" does not exist')
+
+            dataset = self._configuration.databases.bigquery.additional_datasets[dataset_name]
+        else:
+            dataset = self._dataset
+
+        return DatasetReference(
+            self._configuration.databases.bigquery.project,
+            dataset.name
+        ).table(table_name)
+
+    def has_table(self, table_name, dataset_name=None) -> bool:
+        has_table = False
+
+        if dataset_name is not None:
+            if dataset_name not in self._additional_datasets:
+                raise DatasetDoesNotExistError('The dataset "' + dataset_name + '" does not exist')
+
+            dataset = self._additional_datasets[dataset_name]
+        else:
+            dataset = self._dataset
+
+        for table_listitem in self._client.list_tables(dataset):
+            if table_listitem.table_id == table_name:
+                has_table = True
+                break
+
+        return has_table
 
     def _has_dataset(self, dataset_configuration: ConfigurationBigQueryDataset) -> bool:
         has_dataset = False
@@ -195,4 +240,14 @@ class BigQuery:
         )
 
     def query(self, query: str) -> QueryJob:
-        return self._client.query(query)
+        query_job = self._client.query(query)
+
+        if type(query_job.errors) is list and 0 < len(query_job.errors):
+            raise QueryError(query_job.errors, query)
+
+        try:
+            rows = query_job.result()
+        except BadRequest as error:
+            raise QueryError(error.errors, query)
+
+        return query_job

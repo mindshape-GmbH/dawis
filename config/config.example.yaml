@@ -75,6 +75,26 @@ aggregations:
       - 'robotstxtcheck'
     settings:
       useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+  google_search_console:
+    cron: '0 0 * * *'
+    database: 'bigquery'
+    settings:
+      properties:
+        'https://www.owndomain.de/':
+          - project: 'my-google-project-id'
+            credentials: './google-service-credential-file.json'
+            dateDaysAgo: 3
+            tablename: 'search_console'
+            dimensions:
+              - 'page'
+              - 'device'
+              - 'query'
+              - 'country'
+            searchTypes:
+              - 'web'
+              - 'image'
+              - 'video'
+
 operations:
   htmlheadings:
     cron: '*/5 * * * *'
