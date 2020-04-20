@@ -34,8 +34,8 @@ for configuration in configurations:
         app.autodiscover_tasks(['modules.aggregation.custom'], module)
 
         if croniter.is_valid(cron) is True:
-            cron = str.split(cron, sep=' ')
-            app.add_periodic_task(crontab(*cron), run, [configuration.hash, module, 'modules.aggregation.custom'])
+            (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
+            app.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run, [configuration.hash, module, 'modules.aggregation.custom'])
 
     for operationModule in configuration.operations.config.values():
         module = operationModule.name
@@ -44,5 +44,5 @@ for configuration in configurations:
         app.autodiscover_tasks(['modules.operation.custom'], module)
 
         if croniter.is_valid(cron) is True:
-            cron = str.split(cron, sep=' ')
-            app.add_periodic_task(crontab(*cron), run, [configuration.hash, module, 'modules.operation.custom'])
+            (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
+            app.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run, [configuration.hash, module, 'modules.operation.custom'])
