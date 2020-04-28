@@ -3,10 +3,12 @@ __pycache__
 *$py.class
 
 var
+config/*
 config.yaml
-credentials.json
+credentials*.json
 celerybeat-schedule
 
 .idea
 .AppleDouble
 .DS_Store
+.venv

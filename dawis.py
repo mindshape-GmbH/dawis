@@ -14,35 +14,44 @@ redis = 'redis://{0}:{1}'.format(environ.get('REDIS_HOST', '127.0.0.1'), environ
 app = Celery('dawis', backend=redis, broker=redis)
 app.conf.timezone = timezone
 
-configurations = ConfigurationLoader().load_by_config_folder()
 
-for configuration in configurations:
-    with Connection(configuration) as connection:
-        if connection.has_orm():
-            connection.orm.tables.create_tables()
+@app.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    configurations = ConfigurationLoader().load_by_config_folder()
 
-        if connection.has_mongodb():
-            connection.mongodb.migrations()
+    for configuration in configurations:
+        with Connection(configuration) as connection:
+            if connection.has_orm():
+                connection.orm.tables.create_tables()
 
-    with open(Path.var_folder_path() + '/' + configuration.hash + '.pickle', 'wb') as handle:
-        pickle.dump(configuration, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            if connection.has_mongodb():
+                connection.mongodb.migrations()
 
-    for aggregationModule in configuration.aggregations.config.values():
-        module = aggregationModule.name
-        cron = aggregationModule.cron
+        with open(Path.var_folder_path() + '/' + configuration.hash + '.pickle', 'wb') as handle:
+            pickle.dump(configuration, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        app.autodiscover_tasks(['modules.aggregation.custom'], module)
+        for aggregationModule in configuration.aggregations.config.values():
+            module = aggregationModule.name
+            cron = aggregationModule.cron
 
-        if croniter.is_valid(cron) is True:
-            (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
-            app.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run, [configuration.hash, module, 'modules.aggregation.custom'])
+            sender.autodiscover_tasks(['modules.aggregation.custom'], module)
 
-    for operationModule in configuration.operations.config.values():
-        module = operationModule.name
-        cron = operationModule.cron
+            if croniter.is_valid(cron) is True:
+                (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
+                sender.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run,
+                                         [configuration.hash, module, 'modules.aggregation.custom'])
 
-        app.autodiscover_tasks(['modules.operation.custom'], module)
+        for operationModule in configuration.operations.config.values():
+            module = operationModule.name
+            cron = operationModule.cron
 
-        if croniter.is_valid(cron) is True:
-            (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
-            app.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run, [configuration.hash, module, 'modules.operation.custom'])
+            sender.autodiscover_tasks(['modules.operation.custom'], module)
+
+            if croniter.is_valid(cron) is True:
+                (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
+                sender.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run,
+                                         [configuration.hash, module, 'modules.operation.custom'])
+
+
+if __name__ == '__main__':
+    app.start()
