@@ -22,6 +22,12 @@ databases:
 #      description: 'Some nice description for your dataset'
 #      labels:
 #        environment: 'test'
+#    additionalDatasets:
+#      someAdditionalDataset:
+#        location: 'EU'
+#        description: 'Some nice description for your additional dataset'
+#        labels:
+#          environment: 'test'
 #    credentials: './credentials.json'
 
 urlsets:

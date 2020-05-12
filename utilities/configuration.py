@@ -64,10 +64,20 @@ class ConfigurationBigQueryDataset:
 
 
 class ConfigurationBigQuery:
-    def __init__(self, project: str, dataset: ConfigurationBigQueryDataset, credentials: str = None):
+    def __init__(
+            self,
+            project: str,
+            dataset: ConfigurationBigQueryDataset,
+            additional_datasets: Dict[str, ConfigurationBigQueryDataset] = None,
+            credentials: str = None
+    ):
+        if additional_datasets is None:
+            additional_datasets = {}
+
         self.project = project
         self.dataset = dataset
         self.credentials = credentials
+        self.additional_datasets = additional_datasets
 
 
 class ConfigurationDatabases:

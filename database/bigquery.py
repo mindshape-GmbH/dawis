@@ -2,6 +2,7 @@ from database.orm.tables import Tables
 from utilities.configuration import Configuration
 from utilities.configuration import ConfigurationBigQuery
 from utilities.configuration import ConfigurationBigQueryDataset
+from utilities.exceptions import Error
 from utilities.exceptions import ConfigurationMissingError
 from utilities.exceptions import TableDoesNotExistError
 from google.cloud import bigquery
@@ -14,6 +15,11 @@ from datetime import datetime
 from typing import Sequence
 
 
+class DatasetDoesNotExistError(Error):
+    def __init__(self, message: str):
+        self.message = message
+
+
 class BigQuery:
     def __init__(self, configuration: Configuration):
         if type(configuration.databases.bigquery) is not ConfigurationBigQuery:
@@ -22,6 +28,7 @@ class BigQuery:
         self._configuration = configuration
         self._client = None
         self._dataset = None
+        self._additional_datasets = {}
         self._connected = False
         self._insert_batch = {}
 
@@ -49,6 +56,12 @@ class BigQuery:
             self._dataset = self._create_dataset(self._configuration.databases.bigquery.dataset)
         else:
             self._dataset = self._get_dataset(self._configuration.databases.bigquery.dataset)
+
+        for key, additional_dataset in self._configuration.databases.bigquery.additional_datasets.items():
+            if not self._has_dataset(additional_dataset):
+                self._additional_datasets[additional_dataset.name] = self._create_dataset(additional_dataset)
+            else:
+                self._additional_datasets[additional_dataset.name] = self._get_dataset(additional_dataset)
 
         for urlset in self._configuration.urlsets.urlsets:
             self.init_check_table(urlset.name)
@@ -96,11 +109,19 @@ class BigQuery:
 
         return has_table
 
-    def _get_table(self, table_name) -> Table:
+    def _get_table(self, table_name, dataset_name: str = None) -> Table:
+        if dataset_name is not None:
+            if dataset_name not in self._additional_datasets:
+                raise DatasetDoesNotExistError('The dataset "' + dataset_name + '" does not exist')
+
+            dataset = self._additional_datasets[dataset_name]
+        else:
+            dataset = self._dataset
+
         if not self._has_table(table_name):
             raise TableDoesNotExistError('The table "' + table_name + '" does not exist')
 
-        table_id = self._dataset.project + '.' + self._dataset.dataset_id + '.' + table_name
+        table_id = dataset.project + '.' + dataset.dataset_id + '.' + table_name
 
         return self._client.get_table(table_id)
 
@@ -143,17 +164,17 @@ class BigQuery:
             self._client.insert_rows(self._get_table(table_name), data)
 
     def add_check(
-        self,
-        urlset: str,
-        check: str,
-        value: str,
-        valid: bool,
-        diff: str,
-        error: str,
-        url_protocol: str,
-        url_domain: str,
-        url_path: str,
-        url_query: str
+            self,
+            urlset: str,
+            check: str,
+            value: str,
+            valid: bool,
+            diff: str,
+            error: str,
+            url_protocol: str,
+            url_domain: str,
+            url_path: str,
+            url_query: str
     ):
         self._insert_data_batch(
             Tables.checks_tablename(urlset),

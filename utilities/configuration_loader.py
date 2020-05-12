@@ -235,6 +235,7 @@ class ConfigurationLoader:
     @staticmethod
     def _process_configuration_bigquery(plain_configuration: dict) -> ConfigurationBigQuery:
         key = 'databases'
+        additionalDatasets = {}
         credentials = None
 
         if 'bigquery' in plain_configuration[key] and type(plain_configuration[key]['bigquery']) is dict:
@@ -244,7 +245,7 @@ class ConfigurationLoader:
                 project = plain_configuration[key]['bigquery']['project']
 
             if 'dataset' not in plain_configuration[key]['bigquery'] and \
-                type(plain_configuration[key]['bigquery']['dataset']) is not dict:
+                    type(plain_configuration[key]['bigquery']['dataset']) is not dict:
                 raise ConfigurationMissingError(key + ' -> bigquery -> dataset')
             else:
                 dataset = ConfigurationLoader._process_configuration_bigquerydataset(
@@ -252,10 +253,20 @@ class ConfigurationLoader:
                     plain_configuration[key]['bigquery']['dataset']
                 )
 
+            if 'additionalDatasets' in plain_configuration[key]['bigquery'] and \
+                    type(plain_configuration[key]['bigquery']['additionalDatasets']) is dict:
+                for additionalDataset, additionalDataset_configuration in \
+                        plain_configuration[key]['bigquery']['additionalDatasets'].items():
+                    additionalDataset_configuration['name'] = additionalDataset
+                    additionalDatasets[additionalDataset] = ConfigurationLoader._process_configuration_bigquerydataset(
+                        project,
+                        additionalDataset_configuration
+                    )
+
             if 'credentials' in plain_configuration[key]['bigquery']:
                 credentials = abspath(plain_configuration[key]['bigquery']['credentials'])
 
-            return ConfigurationBigQuery(project, dataset, credentials)
+            return ConfigurationBigQuery(project, dataset, additionalDatasets, credentials)
         else:
             raise ConfigurationMissingError(key + ' -> bigquery')
 
@@ -364,6 +375,10 @@ class ConfigurationLoader:
             if 'cron' in configuration_aggregations[key] and type(configuration_aggregations[key]['cron']) is str:
                 cron = configuration_aggregations[key]['cron']
 
+            if 'database' in configuration_aggregations[key] and \
+                    type(configuration_aggregations[key]['database']) is str:
+                database = configuration_aggregations[key]['database']
+
             name = key
 
         if name is None:
@@ -395,6 +410,7 @@ class ConfigurationLoader:
         urlsets = []
         checks = {}
         database = 'orm'
+        domains = []
         cron = None
 
         if key in configuration_operations and type(configuration_operations[key]) is dict:
@@ -418,4 +434,4 @@ class ConfigurationLoader:
             if 'domains' in configuration_operations[key] and type(configuration_operations[key]['domains']) is list:
                 domains = configuration_operations[key]['domains']
 
-        return ConfigurationOperation(key, cron, urlsets, checks, database, domains = None)
+        return ConfigurationOperation(key, cron, urlsets, checks, database, domains)
