@@ -69,6 +69,7 @@ class BigQuery:
         self._connected = True
 
     def close(self):
+        self.commit()
         self._client.close()
         self._connected = False
 
