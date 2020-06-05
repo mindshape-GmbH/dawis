@@ -85,6 +85,7 @@ aggregations:
             credentials: './google-service-credential-file.json'
             dateDaysAgo: 3
             tablename: 'search_console'
+            dataset: 'GSC'
             dimensions:
               - 'page'
               - 'device'
@@ -241,3 +242,30 @@ operations:
         checks:
           status_code: 200
           has_sitemap_xml: true
+  google_search_console:
+    cron: '0 2 * * *'
+    database: 'bigquery'
+    settings:
+      properties:
+        'https://www.property.com/':
+          - inputTable: 'search_console'
+            inputDataset: 'GSC'
+            outputTable: 'search_console_processed'
+            outputDataset: 'GSC'
+            dateDaysAgo: 3
+            excludeInputFields:
+              - 'ctr'
+            matches:
+              - inputField: 'page'
+                outputField: 'fileType'
+                fallback: 'NONE'
+                expressions:
+                  - regex: '\.html$'
+                    caseSensitive: false
+                    output: 'HTML'
+                  - regex: '\.pdf$'
+                    caseSensitive: false
+                    output: 'PDF'
+                  - csv: './config/matches.example.csv'
+                    useRegex: false
+                    caseSensitive: true

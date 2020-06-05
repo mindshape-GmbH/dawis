@@ -1,0 +1,4 @@
+"TEST","F00","BAR"
+"https://www.property.com/pathone/somesite.html","https://www.property.com/pathtwo/somesite.html","https://www.property.com/paththree/somesite.html"
+"https://www.property.com/pathone/someothersite.html","https://www.property.com/pathtwo/someothersite.html","https://www.property.com/paththree/someothersite.html"
+"https://www.property.com/pathone/anothersite.html","https://www.property.com/pathtwo/anothersite.html","https://www.property.com/paththree/anothersite.html"

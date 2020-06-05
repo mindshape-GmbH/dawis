@@ -99,9 +99,10 @@ class ConfigurationLoader:
         configurations = []
 
         for configuration_file in configuration_file_paths:
-            configurations.append(
-                ConfigurationLoader.load_by_file(configuration_folder_path + '/' + configuration_file, save)
-            )
+            if not configuration_file.endswith('example.yaml'):
+                configurations.append(
+                    ConfigurationLoader.load_by_file(configuration_folder_path + '/' + configuration_file, save)
+                )
 
         return configurations
 
