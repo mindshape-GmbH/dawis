@@ -20,9 +20,14 @@ class _DataAlreadyExistError(Exception):
     pass
 
 
+class _DataNotAvailableYet(Exception):
+    pass
+
+
 class GoogleSearchConsole:
     COLLECTION_NAME = 'google_search_console'
     COLLECTION_NAME_CACHE = 'google_search_console_cache'
+    COLLECTION_NAME_RETRY = 'google_search_console_retry'
     ROW_LIMIT = 25000
     DEFAULT_DIMENSIONS = ['page', 'device', 'query', 'country']
     DEFAULT_SEARCHTYPES = ['web', 'image', 'video']
@@ -39,6 +44,17 @@ class GoogleSearchConsole:
         timer_run = time()
 
         configuration = self.configuration.aggregations.get_custom_configuration_aggregation('google_search_console')
+        import_properties = []
+
+        if self.mongodb.has_collection(GoogleSearchConsole.COLLECTION_NAME_RETRY):
+            for retry in self.mongodb.find(
+                    GoogleSearchConsole.COLLECTION_NAME_RETRY,
+                    {'module': 'aggregation'},
+                    True
+            ):
+                del retry['module']
+                retry['requestDate'] = retry['requestDate'].date()
+                import_properties.append(retry)
 
         if 'properties' in configuration.settings and type(configuration.settings['properties']) is dict:
             for gsc_property, property_configurations in configuration.settings['properties'].items():
@@ -50,12 +66,7 @@ class GoogleSearchConsole:
                     previous_data = []
 
                     if 'credentials' in property_configuration and type(property_configuration['credentials']) is str:
-                        credentials = service_account.Credentials.from_service_account_file(
-                            abspath(property_configuration['credentials']),
-                            scopes=['https://www.googleapis.com/auth/webmasters.readonly']
-                        )
-
-                    api_service = build('webmasters', 'v3', credentials=credentials)
+                        credentials = property_configuration['credentials']
 
                     if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
                         request_days_ago = property_configuration['dateDaysAgo']
@@ -76,6 +87,7 @@ class GoogleSearchConsole:
                     else:
                         aggregation_type = ''
 
+                    request_date = date.today() - timedelta(days=request_days_ago)
                     table_name = None
                     dataset_name = None
 
@@ -91,18 +103,76 @@ class GoogleSearchConsole:
                         if type(self.bigquery) is not BigQuery:
                             self.bigquery = self.connection.bigquery
 
-                    self.import_property(
-                        api_service,
-                        gsc_property,
-                        request_days_ago,
-                        dimensions,
-                        search_types,
-                        previous_data,
-                        aggregation_type,
-                        configuration.database,
-                        table_name,
-                        dataset_name
+                    import_property = {
+                        'credentials': credentials,
+                        'property': gsc_property,
+                        'requestDate': request_date,
+                        'dimensions': dimensions,
+                        'searchTypes': search_types,
+                        'previousData': previous_data,
+                        'aggregationType': aggregation_type,
+                        'database': configuration.database,
+                        'tableName': table_name,
+                        'datasetName': dataset_name,
+                    }
+
+                    if 0 == len(list(filter(lambda x: x == import_property, import_properties))):
+                        import_properties.append(import_property)
+
+        for import_property in import_properties:
+            try:
+                credentials = None
+
+                if 'credentials' in import_property and type(import_property['credentials']) is str:
+                    credentials = service_account.Credentials.from_service_account_file(
+                        abspath(import_property['credentials']),
+                        scopes=['https://www.googleapis.com/auth/webmasters.readonly']
                     )
+
+                api_service = build('webmasters', 'v3', credentials=credentials)
+
+                self.import_property(
+                    api_service,
+                    import_property['property'],
+                    import_property['requestDate'],
+                    import_property['dimensions'],
+                    import_property['searchTypes'],
+                    import_property['previousData'],
+                    import_property['aggregationType'],
+                    import_property['database'],
+                    import_property['tableName'],
+                    import_property['datasetName']
+                )
+
+                if '_id' in import_property:
+                    self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
+            except _DataAlreadyExistError:
+                print(' !!! already exists')
+            except _DataNotAvailableYet:
+                print(' !!! not available yet')
+
+                existing_retry = None
+
+                if self.mongodb.has_collection(GoogleSearchConsole.COLLECTION_NAME_RETRY):
+                    existing_retry = self.mongodb.find_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, {
+                        'property': import_property['property'],
+                        'requestDate': datetime.combine(import_property['requestDate'], datetime.min.time()),
+                    })
+
+                if existing_retry is None:
+                    self.mongodb.insert_document(GoogleSearchConsole.COLLECTION_NAME_RETRY, {
+                        'module': 'aggregation',
+                        'credentials': import_property['credentials'],
+                        'property': import_property['property'],
+                        'requestDate': datetime.combine(import_property['requestDate'], datetime.min.time()),
+                        'dimensions': import_property['dimensions'],
+                        'searchTypes': import_property['searchTypes'],
+                        'previousData': import_property['previousData'],
+                        'aggregationType': import_property['aggregationType'],
+                        'database': import_property['database'],
+                        'tableName': import_property['tableName'],
+                        'datasetName': import_property['datasetName'],
+                    })
 
         print('\ncompleted: {:s}'.format(str(timedelta(seconds=int(time() - timer_run)))))
 
@@ -110,7 +180,7 @@ class GoogleSearchConsole:
             self,
             api_service: Resource,
             gsc_property: str,
-            request_days_ago: int,
+            request_date: date,
             dimensions: list,
             search_types: list,
             previous_data: list,
@@ -119,7 +189,6 @@ class GoogleSearchConsole:
             table_name: str,
             dataset_name: str = None
     ):
-        request_date = date.today() - timedelta(days=request_days_ago)
         table_reference = self.bigquery.table_reference(table_name, dataset_name)
         previous_dates = {}
         cache_hash = sha256({'property': gsc_property, 'dimensions': dimensions, 'date': datetime.now().isoformat()})
@@ -157,11 +226,9 @@ class GoogleSearchConsole:
                 table_reference,
                 request_date
         ):
-            print(' !!! already exists')
-            return
+            raise _DataAlreadyExistError()
         elif 'mongodb' == database and self._mongodb_check_has_existing_data(gsc_property, request_date):
-            print(' !!! already exists')
-            return
+            raise _DataAlreadyExistError()
 
         print('\n   + {:%Y-%m-%d} -> {:%Y-%m-%d}'.format(request_date, request_date), end='')
 
@@ -186,6 +253,16 @@ class GoogleSearchConsole:
                 response = api_service.searchanalytics().query(siteUrl=gsc_property, body=request).execute()
 
                 if 'rows' not in response:
+                    if 0 == iteration_count and (len(search_types) - 1) == search_types.index(search_type):
+                        cache_entry = self.mongodb.find_one(
+                            GoogleSearchConsole.COLLECTION_NAME_CACHE,
+                            {'hash': cache_hash},
+                            True
+                        )
+
+                        if cache_entry is None:
+                            raise _DataNotAvailableYet()
+
                     break
 
                 self._cache_rows(

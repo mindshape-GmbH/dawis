@@ -8,10 +8,15 @@ from google.cloud.bigquery import LoadJobConfig, TimePartitioning, TimePartition
 from google.cloud.bigquery.job import WriteDisposition
 from google.cloud.bigquery.table import TableReference
 from datetime import date, datetime, timedelta
+from copy import deepcopy
 from os.path import realpath
 from os.path import isfile
 from pandas import DataFrame, Series, read_csv
 import re
+
+
+class _DataNotAvailableYet(Exception):
+    pass
 
 
 class GoogleSearchConsole:
@@ -30,10 +35,17 @@ class GoogleSearchConsole:
         print('Running operation GSC Matching:')
 
         configuration = self.configuration.operations.get_custom_configuration_operation('google_search_console')
+        processing_configurations = []
 
-        if 'bigquery' == configuration.database:
-            if type(self.bigquery) is not BigQuery:
-                self.bigquery = self.connection.bigquery
+        if self.mongodb.has_collection(AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY):
+            for retry in self.mongodb.find(
+                    AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY,
+                    {'module': 'operation'},
+                    True
+            ):
+                del retry['module']
+                retry['requestDate'] = retry['requestDate'].date()
+                processing_configurations.append(retry)
 
         if 'properties' in configuration.settings and type(configuration.settings['properties']) is dict:
             for gsc_property, property_configurations in configuration.settings['properties'].items():
@@ -72,73 +84,135 @@ class GoogleSearchConsole:
                         exclude_input_fields = property_configuration['excludeInputFields']
 
                     if 'matches' in property_configuration and type(property_configuration['matches']) is list:
-                        for match in property_configuration['matches']:
-                            expressions = []
-
-                            if 'fallback' not in match:
-                                match['fallback'] = ''
-
-                            if 'inputField' not in match:
-                                raise ConfigurationMissingError('missing inputField for match configuration')
-
-                            if 'outputField' not in match:
-                                raise ConfigurationMissingError('missing outputField for match configuration')
-
-                            if 'expressions' in match and type(match['expressions']) is list:
-                                for expression in match['expressions']:
-                                    case_sensitive = True
-
-                                    if 'caseSensitive' in expression:
-                                        case_sensitive = bool(expression['caseSensitive'])
-
-                                    expression['caseSensitive'] = case_sensitive
-
-                                    if 'regex' not in expression and 'csv' not in expression:
-                                        raise ConfigurationMissingError('Missing expression or csv')
-                                    elif 'csv' in expression:
-                                        csv_file_path = realpath(expression['csv'])
-
-                                        if not isfile(csv_file_path):
-                                            raise ConfigurationMissingError(
-                                                'CSV path "{:s}" does not exist'.format(expression['csv'])
-                                            )
-
-                                        expression['csv'] = read_csv(csv_file_path)
-                                        expression['useRegex'] = bool(expression['useRegex']) \
-                                            if 'useRegex' in expression else False
-                                    elif 'regex' in expression:
-                                        expression['regex'] = re.compile(expression['regex']) \
-                                            if case_sensitive else \
-                                            re.compile(expression['regex'], re.IGNORECASE)
-
-                                    expressions.append(expression)
-                            else:
-                                raise ConfigurationMissingError('missing expressions for match configuration')
-
-                            match['expressions'] = expressions
-
-                            matches.append(match)
+                        matches = property_configuration['matches']
 
                     if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
                         request_days_ago = property_configuration['dateDaysAgo']
 
-                    self._process_property(
-                        configuration.database,
-                        gsc_property,
-                        request_days_ago,
-                        input_table,
-                        output_table,
-                        input_dataset,
-                        output_dataset,
-                        exclude_input_fields,
-                        matches
+                    request_date = date.today() - timedelta(days=request_days_ago)
+
+                    processing_configuration = {
+                        'database': configuration.database,
+                        'property': gsc_property,
+                        'requestDate': request_date,
+                        'inputTable': input_table,
+                        'inputDataset': input_dataset,
+                        'outputTable': output_table,
+                        'outputDataset': output_dataset,
+                        'excludeInputFields': exclude_input_fields,
+                        'matches': matches,
+                    }
+
+                    if 0 == len(list(filter(lambda x: x == processing_configuration, processing_configurations))):
+                        processing_configurations.append(processing_configuration)
+
+        for processing_configuration in processing_configurations:
+            if 'bigquery' == processing_configuration['database'] and type(self.bigquery) is not BigQuery:
+                self.bigquery = self.connection.bigquery
+
+            try:
+                self._process_property(
+                    processing_configuration['database'],
+                    processing_configuration['property'],
+                    processing_configuration['requestDate'],
+                    processing_configuration['inputTable'],
+                    processing_configuration['outputTable'],
+                    processing_configuration['inputDataset'],
+                    processing_configuration['outputDataset'],
+                    processing_configuration['excludeInputFields'],
+                    self._process_matches_configuration(processing_configuration['matches'])
+                )
+
+                if '_id' in processing_configuration:
+                    self.mongodb.delete_one(
+                        AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY,
+                        processing_configuration['_id']
                     )
+            except _DataNotAvailableYet:
+                existing_retry = None
+
+                if self.mongodb.has_collection(AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY):
+                    existing_retry = self.mongodb.find_one(AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY, {
+                        'module': 'operation',
+                        'property': processing_configuration['property'],
+                        'requestDate': datetime.combine(processing_configuration['requestDate'], datetime.min.time()),
+                        'inputTable': processing_configuration['inputTable'],
+                        'outputTable': processing_configuration['outputTable'],
+                    })
+
+                if existing_retry is None:
+                    self.mongodb.insert_document(AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY, {
+                        'module': 'operation',
+                        'database': processing_configuration['database'],
+                        'property': processing_configuration['property'],
+                        'requestDate': datetime.combine(processing_configuration['requestDate'], datetime.min.time()),
+                        'inputTable': processing_configuration['inputTable'],
+                        'inputDataset': processing_configuration['inputDataset'],
+                        'outputTable': processing_configuration['outputTable'],
+                        'outputDataset': processing_configuration['outputDataset'],
+                        'excludeInputFields': processing_configuration['excludeInputFields'],
+                        'matches': processing_configuration['matches']
+                    })
+
+    @staticmethod
+    def _process_matches_configuration(configuration_matches: list) -> list:
+        matches = []
+
+        for configuration_match in configuration_matches:
+            expressions = []
+            match = deepcopy(configuration_match)
+
+            if 'fallback' not in match:
+                match['fallback'] = ''
+
+            if 'inputField' not in match:
+                raise ConfigurationMissingError('missing inputField for match configuration')
+
+            if 'outputField' not in match:
+                raise ConfigurationMissingError('missing outputField for match configuration')
+
+            if 'expressions' in match and type(match['expressions']) is list:
+                for expression in match['expressions']:
+                    case_sensitive = True
+
+                    if 'caseSensitive' in expression:
+                        case_sensitive = bool(expression['caseSensitive'])
+
+                    expression['caseSensitive'] = case_sensitive
+
+                    if 'regex' not in expression and 'csv' not in expression:
+                        raise ConfigurationMissingError('Missing expression or csv')
+                    elif 'csv' in expression:
+                        csv_file_path = realpath(expression['csv'])
+
+                        if not isfile(csv_file_path):
+                            raise ConfigurationMissingError(
+                                'CSV path "{:s}" does not exist'.format(expression['csv'])
+                            )
+
+                        expression['csv'] = read_csv(csv_file_path)
+                        expression['useRegex'] = bool(expression['useRegex']) \
+                            if 'useRegex' in expression else False
+                    elif 'regex' in expression:
+                        expression['regex'] = re.compile(expression['regex']) \
+                            if case_sensitive else \
+                            re.compile(expression['regex'], re.IGNORECASE)
+
+                    expressions.append(expression)
+            else:
+                raise ConfigurationMissingError('missing expressions for match configuration')
+
+            match['expressions'] = expressions
+
+            matches.append(match)
+
+        return matches
 
     def _process_property(
             self,
             database: str,
             gsc_property: str,
-            request_days_ago: int,
+            request_date: date,
             input_table: str,
             output_table: str,
             input_dataset: str,
@@ -146,7 +220,6 @@ class GoogleSearchConsole:
             exclude_input_fields: list,
             matches: list
     ):
-        request_date = date.today() - timedelta(days=request_days_ago)
         output_tablereference = self.bigquery.table_reference(output_table, output_dataset)
 
         iteration_count = 0
@@ -171,6 +244,9 @@ class GoogleSearchConsole:
                 )
 
             if data.empty:
+                if 0 == iteration_count:
+                    raise _DataNotAvailableYet()
+
                 break
 
             data = self._process_data(data, matches, exclude_input_fields)

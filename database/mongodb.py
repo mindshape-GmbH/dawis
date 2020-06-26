@@ -89,6 +89,9 @@ class MongoDB:
     def update_one(self, collection_name: str, document_id: ObjectId, update_data: dict):
         self.get_collection(collection_name, False).find_one_and_update({'_id': document_id}, {'$set': update_data})
 
+    def delete_one(self, collection_name: str, document_id: ObjectId):
+        self.get_collection(collection_name, False).delete_one({'_id': document_id})
+
     def find(self, collection_name: str, filter_parameter: dict, raw: bool = False, limit: int = 0, offset: int = 0):
         result = self.get_collection(collection_name, False).find(filter_parameter)
 
