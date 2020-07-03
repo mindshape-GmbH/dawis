@@ -47,64 +47,68 @@ class GoogleSearchConsole:
                 retry['requestDate'] = retry['requestDate'].date()
                 processing_configurations.append(retry)
 
-        if 'properties' in configuration.settings and type(configuration.settings['properties']) is dict:
-            for gsc_property, property_configurations in configuration.settings['properties'].items():
-                for property_configuration in property_configurations:
-                    input_dataset = None
-                    output_dataset = None
-                    exclude_input_fields = []
-                    matches = []
-                    request_days_ago = 3
+        if 'properties' in configuration.settings and type(configuration.settings['properties']) is list:
+            for property_configuration in configuration.settings['properties']:
+                input_dataset = None
+                output_dataset = None
+                exclude_input_fields = []
+                matches = []
+                request_days_ago = 3
 
-                    if 'inputTable' in property_configuration and type(property_configuration['inputTable']) is str:
-                        input_table = property_configuration['inputTable']
-                    else:
-                        raise ConfigurationMissingError('input table is missing')
+                if 'property' in property_configuration and type(property_configuration['property']) is str:
+                    gsc_property = property_configuration['property']
+                else:
+                    raise ConfigurationMissingError('property is missing')
 
-                    if 'outputTable' in property_configuration and type(property_configuration['outputTable']) is str:
-                        output_table = property_configuration['outputTable']
-                    else:
-                        raise ConfigurationMissingError('output table is missing')
+                if 'inputTable' in property_configuration and type(property_configuration['inputTable']) is str:
+                    input_table = property_configuration['inputTable']
+                else:
+                    raise ConfigurationMissingError('input table is missing')
 
-                    if 'inputDataset' in property_configuration and type(property_configuration['inputDataset']) is str:
-                        input_dataset = property_configuration['inputDataset']
-                    elif 'bigquery' == configuration.database:
-                        raise ConfigurationMissingError('input dataset is missing')
+                if 'outputTable' in property_configuration and type(property_configuration['outputTable']) is str:
+                    output_table = property_configuration['outputTable']
+                else:
+                    raise ConfigurationMissingError('output table is missing')
 
-                    if 'outputDataset' in property_configuration and type(
-                            property_configuration['outputDataset']
-                    ) is str:
-                        output_dataset = property_configuration['outputDataset']
-                    elif 'bigquery' == configuration.database:
-                        raise ConfigurationMissingError('output dataset is missing')
+                if 'inputDataset' in property_configuration and type(property_configuration['inputDataset']) is str:
+                    input_dataset = property_configuration['inputDataset']
+                elif 'bigquery' == configuration.database:
+                    raise ConfigurationMissingError('input dataset is missing')
 
-                    if 'excludeInputFields' in property_configuration and type(
-                            property_configuration['excludeInputFields']
-                    ) is list:
-                        exclude_input_fields = property_configuration['excludeInputFields']
+                if 'outputDataset' in property_configuration and type(
+                        property_configuration['outputDataset']
+                ) is str:
+                    output_dataset = property_configuration['outputDataset']
+                elif 'bigquery' == configuration.database:
+                    raise ConfigurationMissingError('output dataset is missing')
 
-                    if 'matches' in property_configuration and type(property_configuration['matches']) is list:
-                        matches = property_configuration['matches']
+                if 'excludeInputFields' in property_configuration and type(
+                        property_configuration['excludeInputFields']
+                ) is list:
+                    exclude_input_fields = property_configuration['excludeInputFields']
 
-                    if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
-                        request_days_ago = property_configuration['dateDaysAgo']
+                if 'matches' in property_configuration and type(property_configuration['matches']) is list:
+                    matches = property_configuration['matches']
 
-                    request_date = date.today() - timedelta(days=request_days_ago)
+                if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
+                    request_days_ago = property_configuration['dateDaysAgo']
 
-                    processing_configuration = {
-                        'database': configuration.database,
-                        'property': gsc_property,
-                        'requestDate': request_date,
-                        'inputTable': input_table,
-                        'inputDataset': input_dataset,
-                        'outputTable': output_table,
-                        'outputDataset': output_dataset,
-                        'excludeInputFields': exclude_input_fields,
-                        'matches': matches,
-                    }
+                request_date = date.today() - timedelta(days=request_days_ago)
 
-                    if 0 == len(list(filter(lambda x: x == processing_configuration, processing_configurations))):
-                        processing_configurations.append(processing_configuration)
+                processing_configuration = {
+                    'database': configuration.database,
+                    'property': gsc_property,
+                    'requestDate': request_date,
+                    'inputTable': input_table,
+                    'inputDataset': input_dataset,
+                    'outputTable': output_table,
+                    'outputDataset': output_dataset,
+                    'excludeInputFields': exclude_input_fields,
+                    'matches': matches,
+                }
+
+                if 0 == len(list(filter(lambda x: x == processing_configuration, processing_configurations))):
+                    processing_configurations.append(processing_configuration)
 
         for processing_configuration in processing_configurations:
             if 'bigquery' == processing_configuration['database'] and type(self.bigquery) is not BigQuery:

@@ -56,68 +56,72 @@ class GoogleSearchConsole:
                 retry['requestDate'] = retry['requestDate'].date()
                 import_properties.append(retry)
 
-        if 'properties' in configuration.settings and type(configuration.settings['properties']) is dict:
-            for gsc_property, property_configurations in configuration.settings['properties'].items():
-                for property_configuration in property_configurations:
-                    credentials = None
-                    request_days_ago = 3
-                    dimensions = GoogleSearchConsole.DEFAULT_DIMENSIONS
-                    search_types = GoogleSearchConsole.DEFAULT_SEARCHTYPES
-                    previous_data = []
+        if 'properties' in configuration.settings and type(configuration.settings['properties']) is list:
+            for property_configuration in configuration.settings['properties']:
+                credentials = None
+                request_days_ago = 3
+                dimensions = GoogleSearchConsole.DEFAULT_DIMENSIONS
+                search_types = GoogleSearchConsole.DEFAULT_SEARCHTYPES
+                previous_data = []
 
-                    if 'credentials' in property_configuration and type(property_configuration['credentials']) is str:
-                        credentials = property_configuration['credentials']
+                if 'property' in property_configuration and type(property_configuration['property']) is str:
+                    gsc_property = property_configuration['property']
+                else:
+                    raise ConfigurationMissingError('property is missing')
 
-                    if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
-                        request_days_ago = property_configuration['dateDaysAgo']
+                if 'credentials' in property_configuration and type(property_configuration['credentials']) is str:
+                    credentials = property_configuration['credentials']
 
-                    if 'dimensions' in property_configuration and type(property_configuration['dimensions']) is int:
-                        dimensions = property_configuration['dimensions']
+                if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
+                    request_days_ago = property_configuration['dateDaysAgo']
 
-                    if 'searchTypes' in property_configuration and type(property_configuration['searchTypes']) is list:
-                        search_types = property_configuration['searchTypes']
+                if 'dimensions' in property_configuration and type(property_configuration['dimensions']) is int:
+                    dimensions = property_configuration['dimensions']
 
-                    if 'previousData' in property_configuration and \
-                            type(property_configuration['previousData']) is list:
-                        previous_data = property_configuration['previousData']
+                if 'searchTypes' in property_configuration and type(property_configuration['searchTypes']) is list:
+                    search_types = property_configuration['searchTypes']
 
-                    if 'aggregationType' in property_configuration and \
-                            type(property_configuration['aggregationType']) is str:
-                        aggregation_type = property_configuration['aggregationType']
+                if 'previousData' in property_configuration and \
+                        type(property_configuration['previousData']) is list:
+                    previous_data = property_configuration['previousData']
+
+                if 'aggregationType' in property_configuration and \
+                        type(property_configuration['aggregationType']) is str:
+                    aggregation_type = property_configuration['aggregationType']
+                else:
+                    aggregation_type = ''
+
+                request_date = date.today() - timedelta(days=request_days_ago)
+                table_name = None
+                dataset_name = None
+
+                if 'bigquery' == configuration.database:
+                    if 'tablename' in property_configuration and type(property_configuration['tablename']) is str:
+                        table_name = property_configuration['tablename']
                     else:
-                        aggregation_type = ''
+                        raise ConfigurationMissingError('Missing tablename for gsc import to bigquery')
 
-                    request_date = date.today() - timedelta(days=request_days_ago)
-                    table_name = None
-                    dataset_name = None
+                    if 'dataset' in property_configuration and type(property_configuration['dataset']) is str:
+                        dataset_name = property_configuration['dataset']
 
-                    if 'bigquery' == configuration.database:
-                        if 'tablename' in property_configuration and type(property_configuration['tablename']) is str:
-                            table_name = property_configuration['tablename']
-                        else:
-                            raise ConfigurationMissingError('Missing tablename for gsc import to bigquery')
+                    if type(self.bigquery) is not BigQuery:
+                        self.bigquery = self.connection.bigquery
 
-                        if 'dataset' in property_configuration and type(property_configuration['dataset']) is str:
-                            dataset_name = property_configuration['dataset']
+                import_property = {
+                    'credentials': credentials,
+                    'property': gsc_property,
+                    'requestDate': request_date,
+                    'dimensions': dimensions,
+                    'searchTypes': search_types,
+                    'previousData': previous_data,
+                    'aggregationType': aggregation_type,
+                    'database': configuration.database,
+                    'tableName': table_name,
+                    'datasetName': dataset_name,
+                }
 
-                        if type(self.bigquery) is not BigQuery:
-                            self.bigquery = self.connection.bigquery
-
-                    import_property = {
-                        'credentials': credentials,
-                        'property': gsc_property,
-                        'requestDate': request_date,
-                        'dimensions': dimensions,
-                        'searchTypes': search_types,
-                        'previousData': previous_data,
-                        'aggregationType': aggregation_type,
-                        'database': configuration.database,
-                        'tableName': table_name,
-                        'datasetName': dataset_name,
-                    }
-
-                    if 0 == len(list(filter(lambda x: x == import_property, import_properties))):
-                        import_properties.append(import_property)
+                if 0 == len(list(filter(lambda x: x == import_property, import_properties))):
+                    import_properties.append(import_property)
 
         for import_property in import_properties:
             try:
@@ -129,7 +133,7 @@ class GoogleSearchConsole:
                         scopes=['https://www.googleapis.com/auth/webmasters.readonly']
                     )
 
-                api_service = build('webmasters', 'v3', credentials=credentials)
+                api_service = build('webmasters', 'v3', credentials=credentials, cache_discovery=False)
 
                 self.import_property(
                     api_service,

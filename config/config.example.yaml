@@ -80,21 +80,21 @@ aggregations:
     database: 'bigquery'
     settings:
       properties:
-        'https://www.owndomain.de/':
-          - project: 'my-google-project-id'
-            credentials: './google-service-credential-file.json'
-            dateDaysAgo: 3
-            tablename: 'search_console'
-            dataset: 'GSC'
-            dimensions:
-              - 'page'
-              - 'device'
-              - 'query'
-              - 'country'
-            searchTypes:
-              - 'web'
-              - 'image'
-              - 'video'
+        - project: 'my-google-project-id'
+          property: 'https://www.owndomain.de/'
+          credentials: './google-service-credential-file.json'
+          dateDaysAgo: 3
+          tablename: 'search_console'
+          dataset: 'GSC'
+          dimensions:
+            - 'page'
+            - 'device'
+            - 'query'
+            - 'country'
+          searchTypes:
+            - 'web'
+            - 'image'
+            - 'video'
 
 operations:
   htmlheadings:
@@ -247,25 +247,25 @@ operations:
     database: 'bigquery'
     settings:
       properties:
-        'https://www.property.com/':
-          - inputTable: 'search_console'
-            inputDataset: 'GSC'
-            outputTable: 'search_console_processed'
-            outputDataset: 'GSC'
-            dateDaysAgo: 3
-            excludeInputFields:
-              - 'ctr'
-            matches:
-              - inputField: 'page'
-                outputField: 'fileType'
-                fallback: 'NONE'
-                expressions:
-                  - regex: '\.html$'
-                    caseSensitive: false
-                    output: 'HTML'
-                  - regex: '\.pdf$'
-                    caseSensitive: false
-                    output: 'PDF'
-                  - csv: './config/matches.example.csv'
-                    useRegex: false
-                    caseSensitive: true
+        - property: 'https://www.property.com/'
+          inputTable: 'search_console'
+          inputDataset: 'GSC'
+          outputTable: 'search_console_processed'
+          outputDataset: 'GSC'
+          dateDaysAgo: 3
+          excludeInputFields:
+            - 'ctr'
+          matches:
+            - inputField: 'page'
+              outputField: 'fileType'
+              fallback: 'NONE'
+              expressions:
+                - regex: '\.html$'
+                  caseSensitive: false
+                  output: 'HTML'
+                - regex: '\.pdf$'
+                  caseSensitive: false
+                  output: 'PDF'
+                - csv: './config/matches.example.csv'
+                  useRegex: false
+                  caseSensitive: true
