@@ -99,9 +99,10 @@ class ConfigurationLoader:
         configurations = []
 
         for configuration_file in configuration_file_paths:
-            configurations.append(
-                ConfigurationLoader.load_by_file(configuration_folder_path + '/' + configuration_file, save)
-            )
+            if not configuration_file.endswith('example.yaml'):
+                configurations.append(
+                    ConfigurationLoader.load_by_file(configuration_folder_path + '/' + configuration_file, save)
+                )
 
         return configurations
 
@@ -307,7 +308,7 @@ class ConfigurationLoader:
         if 'urlsets' in plain_configuration and type(plain_configuration['urlsets']) is dict:
             urlsets = plain_configuration['urlsets']
         else:
-            raise ConfigurationMissingError('urlsets')
+            urlsets = {}
 
         configuration_urlsets = []
 
@@ -360,6 +361,7 @@ class ConfigurationLoader:
         settings = {}
         name = None
         cron = None
+        database = 'mongodb'
 
         if key in configuration_aggregations and type(configuration_aggregations[key]) is dict:
             if 'urlsets' in configuration_aggregations[key] and type(
@@ -387,7 +389,7 @@ class ConfigurationLoader:
         if cron is None:
             raise ConfigurationMissingError('Missing cron command for "' + name + '"')
 
-        return ConfigurationAggregation(name, cron, urlsets, settings)
+        return ConfigurationAggregation(name, cron, urlsets, settings, database)
 
     @staticmethod
     def _process_configuration_operations(plain_configuration: dict) -> ConfigurationOperations:
@@ -410,7 +412,7 @@ class ConfigurationLoader:
         urlsets = []
         checks = {}
         database = 'orm'
-        domains = []
+        settings = {}
         cron = None
 
         if key in configuration_operations and type(configuration_operations[key]) is dict:
@@ -431,7 +433,7 @@ class ConfigurationLoader:
             if 'bigquery' != database and 'orm' != database:
                 raise ConfigurationInvalidError('invalid database "' + database + '" for operation module')
 
-            if 'domains' in configuration_operations[key] and type(configuration_operations[key]['domains']) is list:
-                domains = configuration_operations[key]['domains']
+            if 'settings' in configuration_operations[key] and type(configuration_operations[key]['settings']) is dict:
+                settings = configuration_operations[key]['settings']
 
-        return ConfigurationOperation(key, cron, urlsets, checks, database, domains)
+        return ConfigurationOperation(key, cron, urlsets, checks, database, settings)

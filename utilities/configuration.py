@@ -120,10 +120,11 @@ class ConfigurationUrlsets:
 
 
 class ConfigurationAggregation:
-    def __init__(self, name: str, cron: str, urlsets: Sequence[str], settings: dict):
+    def __init__(self, name: str, cron: str, urlsets: Sequence[str], settings: dict, database: str):
         self.name = name
         self.cron = cron
         self.urlsets = urlsets
+        self.database = database
         self.settings = settings
 
 
@@ -139,13 +140,13 @@ class ConfigurationAggregations:
 
 
 class ConfigurationOperation:
-    def __init__(self, name: str, cron: str, urlsets: Sequence[str], checks: dict, database: str, domains: list = None):
+    def __init__(self, name: str, cron: str, urlsets: Sequence[str], checks: dict, database: str, settings: dict):
         self.name = name
         self.cron = cron
         self.urlsets = urlsets
         self.checks = checks
         self.database = database
-        self.domains = domains
+        self.settings = settings
 
 
 class ConfigurationOperations:
