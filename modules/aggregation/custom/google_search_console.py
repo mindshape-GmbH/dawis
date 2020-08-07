@@ -75,7 +75,7 @@ class GoogleSearchConsole:
                 if 'dateDaysAgo' in property_configuration and type(property_configuration['dateDaysAgo']) is int:
                     request_days_ago = property_configuration['dateDaysAgo']
 
-                if 'dimensions' in property_configuration and type(property_configuration['dimensions']) is int:
+                if 'dimensions' in property_configuration and type(property_configuration['dimensions']) is list:
                     dimensions = property_configuration['dimensions']
 
                 if 'searchTypes' in property_configuration and type(property_configuration['searchTypes']) is list:
