@@ -95,6 +95,36 @@ aggregations:
             - 'web'
             - 'image'
             - 'video'
+  sistrix_domain:
+    cron: '0 1 * * *'
+    database: 'bigquery'
+    settings:
+      configurations:
+        - apiKey: 'ABCDEFG123'
+          domain: 'domain.tld'
+#          host: 'www.domain.tld'
+#          paths:
+#            - 'https://www.domain.tld/some/path/'
+#            - 'https://www.domain.tld/some/other/path'
+#          urls:
+#            - 'https://www.domain.tld/some/url.html'
+#            - 'https://www.domain.tld/some/other/url.html'
+#          onlyOnWeekday: 'Mon'
+          methods:
+            - method: 'sichtbarkeitsindex'
+              fieldName: 'visibilityIndexDesktop'
+            - method: 'sichtbarkeitsindex'
+              fieldName: 'visibilityIndexMobile'
+              parameters:
+                mobile: true
+            - method: 'pages'
+              fieldName: 'pages'
+            - method: 'kwcount.seo'
+              fieldName: 'keywordCountSeo'
+            - method: 'kwcount.seo.top10'
+              fieldName: 'keywordCountSeoTop10'
+          dataset: 'Sistrix'
+          table: 'domain'
 
 operations:
   htmlheadings:
