@@ -95,6 +95,31 @@ aggregations:
             - 'web'
             - 'image'
             - 'video'
+  google_analytics:
+    cron: '0 3 * * *'
+    database: 'bigquery'
+    settings:
+      configurations:
+        - project: 'my-google-project-id'
+          credentials: './google-service-credential-file.json'
+          dateDaysAgo: 1
+          dataset: 'GA'
+          tablename: 'analytics'
+          dimensions:
+            - 'ga:deviceCategory'
+            - 'ga:landingPagePath'
+            - 'ga:date'
+            - 'ga:countryIsoCode'
+          metrics:
+            - 'ga:sessions'
+            - 'ga:percentNewSessions'
+            - 'ga:bounces'
+            - 'ga:transactions'
+            - 'ga:transactionRevenue'
+            - 'ga:sessionDuration'
+            - 'ga:pageviews'
+          views:
+            - my_view_id
   sistrix_domain:
     cron: '0 1 * * *'
     database: 'bigquery'

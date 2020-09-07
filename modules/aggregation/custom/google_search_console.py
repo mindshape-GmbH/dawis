@@ -3,6 +3,7 @@ from database.bigquery import BigQuery
 from utilities.configuration import Configuration
 from utilities.exceptions import ConfigurationMissingError
 from googleapiclient.discovery import build, Resource
+from googleapiclient.errors import UnknownApiNameOrVersion
 from google.api_core.exceptions import BadRequest
 from google.cloud.bigquery import LoadJobConfig, TimePartitioning, TimePartitioningType, TableReference, SchemaField
 from google.cloud.bigquery.job import WriteDisposition
@@ -152,7 +153,7 @@ class GoogleSearchConsole:
                     self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
             except _DataAlreadyExistError:
                 print(' !!! already exists')
-            except _DataNotAvailableYet:
+            except (_DataNotAvailableYet, UnknownApiNameOrVersion):
                 print(' !!! not available yet')
 
                 existing_retry = None
@@ -533,7 +534,7 @@ class GoogleSearchConsole:
                 'property': gsc_property,
                 'date': datetime.combine(request_date, datetime.min.time())
             },
-            True
+            cursor=True
         ).count()
 
     @staticmethod

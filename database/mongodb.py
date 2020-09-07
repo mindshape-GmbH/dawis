@@ -92,7 +92,15 @@ class MongoDB:
     def delete_one(self, collection_name: str, document_id: ObjectId):
         self.get_collection(collection_name, False).delete_one({'_id': document_id})
 
-    def find(self, collection_name: str, filter_parameter: dict, raw: bool = False, limit: int = 0, offset: int = 0):
+    def find(
+            self,
+            collection_name: str,
+            filter_parameter: dict,
+            raw: bool = False,
+            limit: int = 0,
+            offset: int = 0,
+            cursor: bool = False
+    ):
         result = self.get_collection(collection_name, False).find(filter_parameter)
 
         if 0 < offset:
@@ -100,6 +108,9 @@ class MongoDB:
 
         if 0 < limit:
             result.limit(limit)
+
+        if cursor is True:
+            return result
 
         if raw is True:
             return list(result)
