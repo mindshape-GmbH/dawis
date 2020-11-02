@@ -43,14 +43,6 @@ Wir unterscheiden bei der Programmierlogik zwischen zwei Ebenen:
 
 Die Grundlage für die Verarbeitung von Daten sind URLs, auf die zugegriffen wird. DAWIS beherrscht sogenannte URL-Sets, d.h. eine Menge an URLs, die gemeinsam behandelt werden kann. So kannst Du zum Beispiel ein URL-Set für wichtige Kategorie-Seiten in Deinem Shop anlegen, oder ein URL-Set für verschiedene Produktdetailseiten. Auf diesen kann man dann gemeinsame Operationen wie z.B. die Prüfung, ob der Canonical-Tag noch vorhanden ist, durchführen. DAWIS kann nicht selbstständig eine Website crawlen und „alle URLs“ behandeln. Das ist auch nicht Sinn und Zweck eines Monitoring- und Alerting-Systems. 
 
-## Selber ausprobieren? 
-
-Damit Du DAWIS schnell ausprobieren kannst, haben wir eine virtuelle Maschine eingerichtet, die Du ganz einfach herunterladen und starten kannst. Dann hast Du auf deinem PC oder Mac quasi einen kleinen Server laufen.  
-
-* Die virtuelle Maschine kannst Du als Datei hier herunterladen: https://www.mindshape.de/downloads/dawis.ova.zip (Version 1.0, Stand: 25.02.2020 (2,6 GB)) 
-
-* Die Anleitung für die Installation findest Du in der DAWIS-Anwenderdokumentation https://www.mindshape.de/downloads/dawis-anwenderdokumentation.pdf. Dort ist auch erklärt, wie Du die config.yaml einrichten musst. 
-
 ## Nächste Schritte 
 
 Was kommt als Nächstes? Wir sammeln nach dem Lean-Prinzip das Feedback weiter ein. Parallel erweitern wir den Funktionsumfang der vorhandenen Module. Im Fokus stehen diese Bereiche: 
