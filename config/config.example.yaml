@@ -79,6 +79,24 @@ aggregations:
     settings:
       useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
 
+  google_pagespeed:
+    cron: '0 */3 * * *'
+    database: 'bigquery'
+    settings:
+      apiKey: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      configurations:
+        - cluster:
+            Startpage:
+              - 'https://domain.tld/de'
+              - 'https://domain.tld/en'
+              - 'https://domain.tld/fr'
+            Articles:
+              - 'https://domain.tld/de/artikel/irgendein-artikel.html'
+              - 'https://domain.tld/en/article/some-article.html'
+          strategy: 'mobile'
+          tablename: 'pagespeed'
+          dataset: 'Pagespeed'
+
   google_search_console:
     cron: '0 0 * * *'
     database: 'bigquery'
@@ -133,14 +151,14 @@ aggregations:
       configurations:
         - apiKey: 'ABCDEFG123'
           domain: 'domain.tld'
-#          host: 'www.domain.tld'
-#          paths:
-#            - 'https://www.domain.tld/some/path/'
-#            - 'https://www.domain.tld/some/other/path'
-#          urls:
-#            - 'https://www.domain.tld/some/url.html'
-#            - 'https://www.domain.tld/some/other/url.html'
-#          onlyOnWeekday: 'Mon'
+          #host: 'www.domain.tld'
+          #paths:
+          #  - 'https://www.domain.tld/some/path/'
+          #  - 'https://www.domain.tld/some/other/path'
+          #urls:
+          #  - 'https://www.domain.tld/some/url.html'
+          #  - 'https://www.domain.tld/some/other/url.html'
+          #onlyOnWeekday: 'Mon'
           methods:
             - method: 'sichtbarkeitsindex'
               fieldName: 'visibilityIndexDesktop'

@@ -9,6 +9,9 @@ class ResultThread(Thread):
         self.result = None
         self.exception = None
 
+    def get_arguements(self):
+        return self._arguments
+
     def run(self) -> None:
         try:
             self.result = self._function(*self._arguments)
