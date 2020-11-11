@@ -7,12 +7,14 @@ from google.cloud.bigquery.job import LoadJobConfig, WriteDisposition
 from google.cloud.bigquery.enums import SqlTypeNames
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import TableReference, TimePartitioning, TimePartitioningType
+from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
-from datetime import timedelta
+from datetime import datetime, timedelta
 from time import time, sleep
 from typing import Sequence
 import dateutil
+import re
 
 
 class GooglePagespeed:
@@ -52,6 +54,7 @@ class GooglePagespeed:
     def _process_configuration(self, configuration: dict, api_key: str, database: str):
         strategies = ['DESKTOP']
         table_reference = None
+        log_table_reference = None
 
         if 'bigquery' == database:
             if 'tablename' in configuration and type(configuration['tablename']) is str:
@@ -65,6 +68,12 @@ class GooglePagespeed:
                 dataset_name = configuration['dataset']
 
             table_reference = self.connection.bigquery.table_reference(table_name, dataset_name)
+
+            if 'logTablename' in configuration and type(configuration['logTablename']) is str:
+                log_table_reference = self.connection.bigquery.table_reference(
+                    configuration['logTablename'],
+                    dataset_name
+                )
 
         cluster = {}
 
@@ -92,16 +101,17 @@ class GooglePagespeed:
 
         requests = []
         responses = []
+        log = []
 
         for cluster_name, urls in cluster.items():
             for url in urls:
                 for strategy in strategies:
                     requests.append([url, cluster_name, strategy, api_key])
 
-        responses, failed_requests = self._process_requests(requests, responses)
+        responses, failed_requests, log = self._process_requests(requests, responses, log)
 
         if 0 < len(failed_requests):
-            responses, failed_requests = self._process_requests(failed_requests, responses)
+            responses, failed_requests, log = self._process_requests(failed_requests, responses, log)
 
         if 0 < len(failed_requests):
             for failed_request in failed_requests:
@@ -109,10 +119,14 @@ class GooglePagespeed:
 
         if 'bigquery' == database:
             self._process_responses_for_bigquery(responses, table_reference)
+
+            if type(log_table_reference) is TableReference:
+                self._process_log_for_bigquery(log, log_table_reference)
         else:
             self._process_responses_for_mongodb(responses)
 
-    def _process_requests(self, requests: list, responses: list) -> tuple:
+    def _process_requests(self, requests: list, responses: list, log: list) -> tuple:
+        status_code_regex = re.compile(r'status[\s\-_]code:?\s?(\d+)', re.IGNORECASE)
         failed_requests = []
 
         requests_chunks = [
@@ -130,16 +144,44 @@ class GooglePagespeed:
 
             for thread in threads:
                 thread.join()
+                request = thread.get_arguements()
 
                 if isinstance(thread.exception, Exception) or type(thread.result) is not dict:
-                    failed_requests.append(thread.get_arguements())
+                    status_code = None
+
+                    if type(thread.exception) is HttpError:
+                        match = status_code_regex.search(thread.exception.__str__())
+
+                        if type(match) is re.Match:
+                            status_code = int(match.group(1))
+
+                    log.append({
+                        'url': request[0],
+                        'cluster': request[1],
+                        'strategy': request[2],
+                        'date': datetime.utcnow(),
+                        'statusCode': status_code,
+                        'message': thread.exception.__str__()
+                    })
+
+                    failed_requests.append(request)
                 else:
-                    responses.append(thread.result)
+                    response = thread.result
+                    responses.append(response)
+
+                    log.append({
+                        'url': request[0],
+                        'cluster': request[1],
+                        'strategy': request[2],
+                        'date': datetime.utcnow(),
+                        'statusCode': response['statusCode'],
+                        'message': None
+                    })
 
             if len(requests_chunks) != requests_chunks.index(requests_chunk) + 1:
                 sleep(GooglePagespeed.SECONDS_BETWEEN_REQUESTS)
 
-        return responses, failed_requests
+        return responses, failed_requests, log
 
     def _process_pagespeed_api(
             self,
@@ -190,14 +232,15 @@ class GooglePagespeed:
             SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('strategy', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
+            SchemaField('statusCode', SqlTypeNames.INTEGER, 'REQUIRED'),
             SchemaField('cluster', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('labdata', SqlTypeNames.RECORD, 'REQUIRED', fields=(
                 SchemaField('cls', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('lcp', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('fcp', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('performanceScore', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('serverResponseTime', SqlTypeNames.INTEGER, 'REQUIRED'),
-                SchemaField('usesTextCompression', SqlTypeNames.INTEGER, 'REQUIRED'),
+                SchemaField('serverResponseTime', SqlTypeNames.FLOAT, 'REQUIRED'),
+                SchemaField('usesTextCompression', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('usesLongCacheTtl', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('domSize', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('offscreenImages', SqlTypeNames.FLOAT, 'REQUIRED'),
@@ -222,6 +265,27 @@ class GooglePagespeed:
         load_job = self.bigquery.client.load_table_from_json(data, table_reference, job_config=job_config)
         load_job.result()
 
+    def _process_log_for_bigquery(self, log: Sequence[dict], table_reference: TableReference):
+        job_config = LoadJobConfig()
+        job_config.destination = table_reference
+        job_config.write_disposition = WriteDisposition.WRITE_APPEND
+        job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
+
+        job_config.schema = (
+            SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
+            SchemaField('cluster', SqlTypeNames.STRING, 'REQUIRED'),
+            SchemaField('strategy', SqlTypeNames.STRING, 'REQUIRED'),
+            SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
+            SchemaField('statusCode', SqlTypeNames.INTEGER),
+            SchemaField('message', SqlTypeNames.STRING),
+        )
+
+        for log_item in log:
+            log_item['date'] = log_item['date'].strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+        load_job = self.bigquery.client.load_table_from_json(log, table_reference, job_config=job_config)
+        load_job.result()
+
     @staticmethod
     def _process_response(response: dict, url: str, cluster: str, strategy: str) -> dict:
         loading_experience_dummy = lambda x: {
@@ -243,9 +307,14 @@ class GooglePagespeed:
             'fidBad': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][2]['proportion'],
         }
 
+        status_code = int(
+            response['lighthouseResult']['audits']['network-requests']['details']['items'][0]['statusCode']
+        )
+
         data = {
             'url': url,
             'strategy': strategy,
+            'statusCode': status_code,
             'date': dateutil.parser.parse(response['analysisUTCTimestamp']),
             'cluster': cluster,
             'labdata': {
