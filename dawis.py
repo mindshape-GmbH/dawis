@@ -38,8 +38,12 @@ def setup_periodic_tasks(sender, **kwargs):
 
             if croniter.is_valid(cron) is True:
                 (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
-                sender.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run,
-                                         [configuration.hash, module, 'modules.aggregation.custom'])
+                sender.add_periodic_task(
+                    crontab(minute, hour, day_week, day_month, month),
+                    run,
+                    [configuration.hash, module, 'modules.aggregation.custom'],
+                    time_limit=aggregationModule.runtime_limit
+                )
 
         for operationModule in configuration.operations.config.values():
             module = operationModule.name
@@ -49,8 +53,12 @@ def setup_periodic_tasks(sender, **kwargs):
 
             if croniter.is_valid(cron) is True:
                 (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
-                sender.add_periodic_task(crontab(minute, hour, day_week, day_month, month), run,
-                                         [configuration.hash, module, 'modules.operation.custom'])
+                sender.add_periodic_task(
+                    crontab(minute, hour, day_week, day_month, month),
+                    run,
+                    [configuration.hash, module, 'modules.operation.custom'],
+                    time_limit=operationModule.runtime_limit
+                )
 
 
 if __name__ == '__main__':

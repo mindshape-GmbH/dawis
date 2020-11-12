@@ -1,5 +1,6 @@
 from utilities.exceptions import ExitError, ConfigurationMissingError, ConfigurationInvalidError
 from utilities.validator import Validator
+from utilities.configuration import DEFAULT_MODULE_RUNTIME_LIMIT
 from utilities.configuration import ConfigurationOperation
 from utilities.configuration import ConfigurationOperations
 from utilities.configuration import ConfigurationAggregation
@@ -273,8 +274,8 @@ class ConfigurationLoader:
 
     @staticmethod
     def _process_configuration_bigquerydataset(
-        project: str,
-        dataset_plain_configuration: dict
+            project: str,
+            dataset_plain_configuration: dict
     ) -> ConfigurationBigQueryDataset:
         description = None
         labels = {}
@@ -361,21 +362,26 @@ class ConfigurationLoader:
         settings = {}
         name = None
         cron = None
+        runtime_limit = DEFAULT_MODULE_RUNTIME_LIMIT
         database = 'mongodb'
 
         if key in configuration_aggregations and type(configuration_aggregations[key]) is dict:
             if 'urlsets' in configuration_aggregations[key] and type(
-                configuration_aggregations[key]['urlsets']
+                    configuration_aggregations[key]['urlsets']
             ) is list:
                 urlsets = configuration_aggregations[key]['urlsets']
 
             if 'settings' in configuration_aggregations[key] and type(
-                configuration_aggregations[key]['settings']
+                    configuration_aggregations[key]['settings']
             ) is dict:
                 settings = configuration_aggregations[key]['settings']
 
             if 'cron' in configuration_aggregations[key] and type(configuration_aggregations[key]['cron']) is str:
                 cron = configuration_aggregations[key]['cron']
+
+            if 'runtimeLimit' in configuration_aggregations[key] and \
+                    type(configuration_aggregations[key]['runtimeLimit']) is int:
+                runtime_limit = configuration_aggregations[key]['runtimeLimit']
 
             if 'database' in configuration_aggregations[key] and \
                     type(configuration_aggregations[key]['database']) is str:
@@ -389,7 +395,7 @@ class ConfigurationLoader:
         if cron is None:
             raise ConfigurationMissingError('Missing cron command for "' + name + '"')
 
-        return ConfigurationAggregation(name, cron, urlsets, settings, database)
+        return ConfigurationAggregation(name, cron, urlsets, settings, database, runtime_limit)
 
     @staticmethod
     def _process_configuration_operations(plain_configuration: dict) -> ConfigurationOperations:
@@ -414,6 +420,7 @@ class ConfigurationLoader:
         database = 'orm'
         settings = {}
         cron = None
+        runtime_limit = DEFAULT_MODULE_RUNTIME_LIMIT
 
         if key in configuration_operations and type(configuration_operations[key]) is dict:
             if 'urlsets' in configuration_operations[key] and type(configuration_operations[key]['urlsets']) is list:
@@ -430,10 +437,14 @@ class ConfigurationLoader:
             else:
                 raise ConfigurationMissingError('Missing cron command for "' + key + '"')
 
+            if 'runtimeLimit' in configuration_operations[key] and \
+                    type(configuration_operations[key]['runtimeLimit']) is int:
+                runtime_limit = configuration_operations[key]['runtimeLimit']
+
             if 'bigquery' != database and 'orm' != database:
                 raise ConfigurationInvalidError('invalid database "' + database + '" for operation module')
 
             if 'settings' in configuration_operations[key] and type(configuration_operations[key]['settings']) is dict:
                 settings = configuration_operations[key]['settings']
 
-        return ConfigurationOperation(key, cron, urlsets, checks, database, settings)
+        return ConfigurationOperation(key, cron, urlsets, checks, database, settings, runtime_limit)

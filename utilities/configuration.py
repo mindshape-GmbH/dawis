@@ -3,17 +3,19 @@ from typing import Sequence
 from typing import Dict
 import re
 
+DEFAULT_MODULE_RUNTIME_LIMIT = 600
+
 
 class ConfigurationORM:
     def __init__(
-        self,
-        connection_url: str = None,
-        dbtype: str = None,
-        host: str = None,
-        port: int = None,
-        dbname: str = None,
-        username: str = None,
-        password: str = None
+            self,
+            connection_url: str = None,
+            dbtype: str = None,
+            host: str = None,
+            port: int = None,
+            dbname: str = None,
+            username: str = None,
+            password: str = None
     ):
         self.url = connection_url
         self.dbtype = dbtype
@@ -49,12 +51,12 @@ class ConfigurationMongoDB:
 
 class ConfigurationBigQueryDataset:
     def __init__(
-        self,
-        project: str,
-        name: str,
-        location: str,
-        description: str = None,
-        labels: Sequence[Dict[str, str]] = None
+            self,
+            project: str,
+            name: str,
+            location: str,
+            description: str = None,
+            labels: Sequence[Dict[str, str]] = None
     ):
         self.project = project
         self.name = name
@@ -82,10 +84,10 @@ class ConfigurationBigQuery:
 
 class ConfigurationDatabases:
     def __init__(
-        self,
-        mongodb: ConfigurationMongoDB,
-        orm: ConfigurationORM = None,
-        bigquery: ConfigurationBigQuery = None
+            self,
+            mongodb: ConfigurationMongoDB,
+            orm: ConfigurationORM = None,
+            bigquery: ConfigurationBigQuery = None
     ):
         self.mongodb = mongodb
         self.orm = orm
@@ -120,12 +122,21 @@ class ConfigurationUrlsets:
 
 
 class ConfigurationAggregation:
-    def __init__(self, name: str, cron: str, urlsets: Sequence[str], settings: dict, database: str):
+    def __init__(
+            self,
+            name: str,
+            cron: str,
+            urlsets: Sequence[str],
+            settings: dict,
+            database: str,
+            runtime_limit: int = DEFAULT_MODULE_RUNTIME_LIMIT
+    ):
         self.name = name
         self.cron = cron
         self.urlsets = urlsets
         self.database = database
         self.settings = settings
+        self.runtime_limit = runtime_limit
 
 
 class ConfigurationAggregations:
@@ -140,13 +151,23 @@ class ConfigurationAggregations:
 
 
 class ConfigurationOperation:
-    def __init__(self, name: str, cron: str, urlsets: Sequence[str], checks: dict, database: str, settings: dict):
+    def __init__(
+            self,
+            name: str,
+            cron: str,
+            urlsets: Sequence[str],
+            checks: dict,
+            database: str,
+            settings: dict,
+            runtime_limit: int = DEFAULT_MODULE_RUNTIME_LIMIT
+    ):
         self.name = name
         self.cron = cron
         self.urlsets = urlsets
         self.checks = checks
         self.database = database
         self.settings = settings
+        self.runtime_limit = runtime_limit
 
 
 class ConfigurationOperations:
@@ -162,12 +183,12 @@ class ConfigurationOperations:
 
 class Configuration:
     def __init__(
-        self,
-        configuration_databases: ConfigurationDatabases,
-        configuration_urlsets: ConfigurationUrlsets,
-        configuration_aggregations: ConfigurationAggregations,
-        configuration_operations: ConfigurationOperations,
-        configuration_hash: str
+            self,
+            configuration_databases: ConfigurationDatabases,
+            configuration_urlsets: ConfigurationUrlsets,
+            configuration_aggregations: ConfigurationAggregations,
+            configuration_operations: ConfigurationOperations,
+            configuration_hash: str
     ):
         self.databases = configuration_databases
         self.urlsets = configuration_urlsets
