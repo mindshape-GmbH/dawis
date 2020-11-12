@@ -89,17 +89,16 @@ class BigQuery:
         return self._client
 
     def table_reference(self, table_name: str, dataset_name: str = None) -> TableReference:
-        if dataset_name is not None:
-            if dataset_name not in self._configuration.databases.bigquery.additional_datasets:
-                raise DatasetDoesNotExistError('The dataset "' + dataset_name + '" does not exist')
-
-            dataset = self._configuration.databases.bigquery.additional_datasets[dataset_name]
-        else:
+        if dataset_name is None or dataset_name == self._dataset.dataset_id:
             dataset = self._dataset
+        elif dataset_name in self._additional_datasets:
+            dataset = self._additional_datasets[dataset_name]
+        else:
+            raise DatasetDoesNotExistError('The dataset "' + str(dataset_name) + '" does not exist')
 
         return DatasetReference(
             self._configuration.databases.bigquery.project,
-            dataset.name
+            dataset.dataset_id
         ).table(table_name)
 
     def has_table(self, table_name, dataset_name=None) -> bool:
