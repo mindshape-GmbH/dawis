@@ -11,7 +11,7 @@ import pickle
 timezone = environ.get('CELERY_TIMEZONE', 'UTC')
 redis = 'redis://{0}:{1}'.format(environ.get('REDIS_HOST', '127.0.0.1'), environ.get('REDIS_PORT', '6379'))
 
-app = Celery('dawis', backend=redis, broker=redis)
+app = Celery('dawis-' + environ.get('CELERY_PROJECT', 'project'), backend=redis, broker=redis)
 app.conf.timezone = timezone
 
 
