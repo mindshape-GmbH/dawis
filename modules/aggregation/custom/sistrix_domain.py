@@ -333,5 +333,5 @@ class SistrixDomain:
                 key: value,
                 'date': datetime.combine(request_date, datetime.min.time())
             },
-            True
+            cursor=True
         ).count()
