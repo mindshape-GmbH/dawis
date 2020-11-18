@@ -8,11 +8,14 @@ from croniter import croniter
 from os import environ
 import pickle
 
-timezone = environ.get('CELERY_TIMEZONE', 'UTC')
-redis = 'redis://{0}:{1}'.format(environ.get('REDIS_HOST', '127.0.0.1'), environ.get('REDIS_PORT', '6379'))
+redis = 'redis://{0}:{1}/{2}'.format(
+    environ.get('REDIS_HOST', '127.0.0.1'),
+    environ.get('REDIS_PORT', '6379'),
+    environ.get('REDIS_DATABASE', '0')
+)
 
 app = Celery('dawis-' + environ.get('CELERY_PROJECT', 'project'), backend=redis, broker=redis)
-app.conf.timezone = timezone
+app.conf.timezone = environ.get('CELERY_TIMEZONE', 'UTC')
 
 
 @app.on_after_configure.connect
