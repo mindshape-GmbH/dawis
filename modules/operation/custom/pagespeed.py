@@ -8,17 +8,17 @@ import json
 
 
 class Pagespeed:
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         if not connection.has_bigquery() and not connection.has_orm():
             raise ConfigurationMissingError('Missing a database configuration for this operation')
 
         self.configuration = configuration
+        self.module_configuration = configuration.operations.get_custom_configuration_operation(configuration_key)
         self.mongodb = connection.mongodb
         self.check_service = Check(connection)
-        self.pagespeed_config = self.configuration.operations.get_custom_configuration_operation('pagespeed')
 
     def run(self):
-        if len(self.pagespeed_config.checks) > 0:
+        if len(self.module_configuration.checks) > 0:
             print('Running operation pagespeed:', "\n")
 
             if not self.mongodb.has_collection(PagespeedAggregationModule.COLLECTION_NAME):
@@ -146,8 +146,8 @@ class Pagespeed:
             print("\n")
 
     def check_fcp_score(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -159,7 +159,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-fcp_score_' + strategy,
                 str(result),
@@ -175,8 +175,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_fcp_display(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -188,7 +188,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-fcp_display_' + strategy,
                 str(result),
@@ -204,8 +204,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_tti_score(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -217,7 +217,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-time_to_interactive_score_' + strategy,
                 str(result),
@@ -233,8 +233,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_tti_display(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -246,7 +246,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-time_to_interactive_display_' + strategy,
                 str(result),
@@ -262,8 +262,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_ttfb_score(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -275,7 +275,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-ttfb_score_' + strategy,
                 str(result),
@@ -291,8 +291,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_ttfb_display(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -304,7 +304,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-ttfb_display_' + strategy,
                 str(result),
@@ -320,8 +320,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_performance_score(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -333,7 +333,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-performance_score_' + strategy,
                 str(result),
@@ -349,8 +349,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_render_blocking_resources(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -362,7 +362,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-render_blocking_resources_' + strategy,
                 str(result),
@@ -378,8 +378,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_uses_optimized_images(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -391,7 +391,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-uses_optimized_images_' + strategy,
                 str(result),
@@ -407,8 +407,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_uses_text_compression(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -420,7 +420,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-uses_text_compression_' + strategy,
                 str(result),
@@ -436,8 +436,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_uses_long_cache_ttl(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -449,7 +449,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-uses_long_cache_ttl_' + strategy,
                 str(result),
@@ -465,8 +465,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_unminified_css(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -478,7 +478,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-unminified_css_' + strategy,
                 str(result),
@@ -494,8 +494,8 @@ class Pagespeed:
             print(' ... ' + str(valid))
 
     def check_unminified_js(self, urlset_name: str, url: URL, check: str, j: dict, strategy: str):
-        if check in self.pagespeed_config.checks:
-            assert_val = self.pagespeed_config.checks[check][strategy]
+        if check in self.module_configuration.checks:
+            assert_val = self.module_configuration.checks[check][strategy]
 
             print('      -> check_' + check + ' "' + str(assert_val) + '"', end='')
 
@@ -508,7 +508,7 @@ class Pagespeed:
                     valid = True
 
             self.check_service.add_check(
-                self.pagespeed_config.database,
+                self.module_configuration.database,
                 urlset_name,
                 'pagespeed-unminified_javascript_' + strategy,
                 str(result),

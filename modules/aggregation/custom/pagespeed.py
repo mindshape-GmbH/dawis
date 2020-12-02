@@ -11,19 +11,19 @@ class Pagespeed:
     API_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed'
     COLLECTION_NAME = 'pagespeed'
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
-        self.pagespeed_config = self.configuration.aggregations.get_custom_configuration_aggregation('pagespeed')
 
-        self.apikey = self.pagespeed_config.settings['apikey']
+        self.apikey = self.module_configuration.settings['apikey']
 
     def run(self):
         print('Running aggregation pagespeed: ')
         pagespeed_tests = []
         threads = []
 
-        for urlset_name in self.pagespeed_config.urlsets:
+        for urlset_name in self.module_configuration.urlsets:
             print(' - "' + urlset_name + '":')
 
             for url in self.configuration.urlsets.urlset_urls(urlset_name):
@@ -64,7 +64,6 @@ def _process_api(apikey: str, url: str, strategy: str = 'desktop', categories=No
         for category in categories:
             parameters += '&category=' + category
     else:
-        # parameters += '&category=performance&fields=lighthouseResult/audits/speed-index,lighthouseResult/audits/first-contentful-paint,lighthouseResult/audits/first-meaningful-paint,lighthouseResult/audits/metrics,lighthouseResult/categories/performance/score'
         parameters += '&category=performance&fields=lighthouseResult'
 
     if '' != apikey and apikey is not None:

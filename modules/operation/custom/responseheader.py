@@ -6,23 +6,23 @@ from modules.aggregation.custom.html_parser import HtmlParser
 
 
 class Responseheader:
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         if not connection.has_bigquery() and not connection.has_orm():
             raise ConfigurationMissingError('Missing a database configuration for this operation')
 
         self.configuration = configuration
+        self.module_configuration = configuration.operations.get_custom_configuration_operation(configuration_key)
         self.mongodb = connection.mongodb
         self.check_service = Check(connection)
-        self.responseheader_config = self.configuration.operations.get_custom_configuration_operation('responseheader')
 
     def run(self):
-        if len(self.responseheader_config.urlsets) > 0:
+        if len(self.module_configuration.urlsets) > 0:
             print('Running operation responseheader:', "\n")
 
             if not self.mongodb.has_collection(HtmlParser.COLLECTION_NAME):
                 return
 
-            for urlset in self.responseheader_config.urlsets:
+            for urlset in self.module_configuration.urlsets:
                 print(' - "' + str(urlset['url']) + '":')
 
                 for single_urlset in urlset:
@@ -69,7 +69,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-status_code',
                 '',
@@ -100,7 +100,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-content_encoding',
                 '',
@@ -131,7 +131,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-cache_control',
                 '',
@@ -162,7 +162,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-expires',
                 '',
@@ -193,7 +193,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-x_canonical',
                 '',
@@ -224,7 +224,7 @@ class Responseheader:
             url = data['url']
 
             self.check_service.add_check(
-                self.responseheader_config.database,
+                self.module_configuration.database,
                 data['urlset'],
                 'responseheader-no_index',
                 '',

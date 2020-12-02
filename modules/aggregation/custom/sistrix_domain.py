@@ -33,8 +33,9 @@ class SistrixDomain:
         SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO_TOP10: [],
     }
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
         self.bigquery = None
@@ -43,12 +44,10 @@ class SistrixDomain:
         print('Running Sistrix Domain Module:')
         timer_run = time()
 
-        module_configuration = self.configuration.aggregations.get_custom_configuration_aggregation('sistrix_domain')
-
-        if 'configurations' in module_configuration.settings and \
-                type(module_configuration.settings['configurations']) is list:
-            for configuration in module_configuration.settings['configurations']:
-                self._process_request_configuration(configuration, module_configuration.database)
+        if 'configurations' in self.module_configuration.settings and \
+                type(self.module_configuration.settings['configurations']) is list:
+            for configuration in self.module_configuration.settings['configurations']:
+                self._process_request_configuration(configuration, self.module_configuration.database)
 
         print('\ncompleted: {}'.format(str(timedelta(seconds=int(time() - timer_run)))))
 

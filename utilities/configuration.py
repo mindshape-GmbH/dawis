@@ -124,14 +124,14 @@ class ConfigurationUrlsets:
 class ConfigurationAggregation:
     def __init__(
             self,
-            name: str,
+            module: str,
             cron: str,
             urlsets: Sequence[str],
             settings: dict,
             database: str,
             runtime_limit: int = DEFAULT_MODULE_RUNTIME_LIMIT
     ):
-        self.name = name
+        self.module = module
         self.cron = cron
         self.urlsets = urlsets
         self.database = database
@@ -153,7 +153,7 @@ class ConfigurationAggregations:
 class ConfigurationOperation:
     def __init__(
             self,
-            name: str,
+            module: str,
             cron: str,
             urlsets: Sequence[str],
             checks: dict,
@@ -161,7 +161,7 @@ class ConfigurationOperation:
             settings: dict,
             runtime_limit: int = DEFAULT_MODULE_RUNTIME_LIMIT
     ):
-        self.name = name
+        self.module = module
         self.cron = cron
         self.urlsets = urlsets
         self.checks = checks

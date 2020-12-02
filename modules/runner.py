@@ -9,7 +9,7 @@ import pickle
 
 
 @task()
-def run(configuration_hash: str, module: str, module_namespace: str):
+def run(configuration_hash: str, configuration_key: str, module: str, module_namespace: str):
     with open(Path.var_folder_path() + '/' + configuration_hash + '.pickle', 'rb') as handle:
         configuration = pickle.load(handle)
 
@@ -22,6 +22,6 @@ def run(configuration_hash: str, module: str, module_namespace: str):
     for customattribute in dir(custommodule):
         if customattribute == tocamelcase.convert(module):
             customclass = getattr(custommodule, customattribute)
-            customclass(configuration, connection).run()
+            customclass(configuration, configuration_key, connection).run()
 
     connection.close()

@@ -14,16 +14,16 @@ class HtmlParser:
     DEFAULT_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
     COLLECTION_NAME = 'html_parser'
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
 
     def run(self):
         print('Running aggregation html_parser:')
 
-        html_parser_config = self.configuration.aggregations.get_custom_configuration_aggregation('html_parser')
-        html_parser_urlsets = html_parser_config.urlsets
-        html_parser_settings = html_parser_config.settings
+        html_parser_urlsets = self.module_configuration.urlsets
+        html_parser_settings = self.module_configuration.settings
 
         data = []
 

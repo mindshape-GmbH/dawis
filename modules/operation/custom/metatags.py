@@ -9,23 +9,23 @@ from utilities.url import URL
 
 
 class Metatags:
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         if not connection.has_bigquery() and not connection.has_orm():
             raise ConfigurationMissingError('Missing a database configuration for this operation')
 
         self.configuration = configuration
+        self.module_configuration = configuration.operations.get_custom_configuration_operation(configuration_key)
         self.mongodb = connection.mongodb
         self.check_service = Check(connection)
-        self.metatags_config = self.configuration.operations.get_custom_configuration_operation('metatags')
 
     def run(self):
-        if len(self.metatags_config.urlsets) > 0:
+        if len(self.module_configuration.urlsets) > 0:
             print('Running operation metatags:', "\n")
 
             if not self.mongodb.has_collection(HtmlParser.COLLECTION_NAME):
                 return
 
-            for urlset in self.metatags_config.urlsets:
+            for urlset in self.module_configuration.urlsets:
                 print(' - "' + str(urlset['url']) + '":')
 
                 for single_urlset in urlset:
@@ -99,7 +99,7 @@ class Metatags:
             valid = True
 
         self.check_service.add_check(
-            self.metatags_config.database,
+            self.module_configuration.database,
             data['urlset'],
             'metatags-has_multiple_titles',
             value,
@@ -146,7 +146,7 @@ class Metatags:
                         error = 'title missing'
 
                     self.check_service.add_check(
-                        self.metatags_config.database,
+                        self.module_configuration.database,
                         data['urlset'],
                         'metatags-has_title',
                         value,
@@ -191,7 +191,7 @@ class Metatags:
                     error = 'titletag is empty'
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-is_title_empty',
                     value,
@@ -259,7 +259,7 @@ class Metatags:
                 url = data['url']
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-has_title_changed',
                     value_new,
@@ -324,7 +324,7 @@ class Metatags:
                             urlset = data['urlset']
 
                         self.check_service.add_check(
-                            self.metatags_config.database,
+                            self.module_configuration.database,
                             urlset,
                             'metatags-has_title_duplicates',
                             value,
@@ -363,7 +363,7 @@ class Metatags:
                             error = 'title duplicates in url-set detected'
 
                         self.check_service.add_check(
-                            self.metatags_config.database,
+                            self.module_configuration.database,
                             urlset,
                             'metatags-has_title_duplicates',
                             value,
@@ -407,7 +407,7 @@ class Metatags:
             valid = True
 
         self.check_service.add_check(
-            self.metatags_config.database,
+            self.module_configuration.database,
             data['urlset'],
             'metatags-has_multiple_descriptions',
             value,
@@ -450,7 +450,7 @@ class Metatags:
                         url = data['url']
 
                         self.check_service.add_check(
-                            self.metatags_config.database,
+                            self.module_configuration.database,
                             data['urlset'],
                             'metatags-has_description',
                             value,
@@ -499,7 +499,7 @@ class Metatags:
                     url = data['url']
 
                     self.check_service.add_check(
-                        self.metatags_config.database,
+                        self.module_configuration.database,
                         data['urlset'],
                         'metatags-is_description_empty',
                         value,
@@ -569,7 +569,7 @@ class Metatags:
                 url = data['url']
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-has_description_changed',
                     value_new,
@@ -632,7 +632,7 @@ class Metatags:
                             urlset = data['urlset']
 
                         self.check_service.add_check(
-                            self.metatags_config.database,
+                            self.module_configuration.database,
                             urlset,
                             'metatags-has_description_duplicates',
                             value,
@@ -671,7 +671,7 @@ class Metatags:
                             error = 'description duplicates in url-set detected'
 
                         self.check_service.add_check(
-                            self.metatags_config.database,
+                            self.module_configuration.database,
                             urlset,
                             'metatags-has_description_duplicates',
                             value,
@@ -722,7 +722,7 @@ class Metatags:
                     error = 'no canonical'
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-has_canonical',
                     value,
@@ -754,7 +754,7 @@ class Metatags:
                             valid = True
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-canonical_is_self_referencing',
                     value,
@@ -791,7 +791,7 @@ class Metatags:
                     valid = True
 
                 self.check_service.add_check(
-                    self.metatags_config.database,
+                    self.module_configuration.database,
                     data['urlset'],
                     'metatags-canonical_href_200',
                     value,

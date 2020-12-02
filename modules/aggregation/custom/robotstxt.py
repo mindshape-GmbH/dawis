@@ -8,16 +8,16 @@ import requests
 class Robotstxt:
     COLLECTION_NAME = 'robotstxt'
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
-        self.robots_config = self.configuration.aggregations.get_custom_configuration_aggregation('robotstxt')
 
     def run(self):
         print('Running aggregation robotstxt: ')
         robotstxt_data = []
 
-        for urlset_name in self.robots_config.urlsets:
+        for urlset_name in self.module_configuration.urlsets:
             print(' - "' + urlset_name + '":')
             for url in self.configuration.urlsets.urlset_urls(urlset_name):
                 urlstr = str(url)
