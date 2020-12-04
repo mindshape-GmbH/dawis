@@ -17,8 +17,8 @@ for configuration in configurations:
     with open(Path.var_folder_path() + '/' + configuration.hash + '.pickle', 'wb') as handle:
         pickle.dump(configuration, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    for aggregationModule in configuration.aggregations.config.values():
-        run(configuration.hash, aggregationModule.name, 'modules.aggregation.custom')
+    for configuration_key, aggregationModule in configuration.aggregations.config.items():
+        run(configuration.hash, configuration_key, aggregationModule.module, 'modules.aggregation.custom')
 
-    for operationModule in configuration.operations.config.values():
-        run(configuration.hash, operationModule.name, 'modules.operation.custom')
+    for configuration_key, operationModule in configuration.operations.config.items():
+        run(configuration.hash, configuration_key, operationModule.module, 'modules.operation.custom')

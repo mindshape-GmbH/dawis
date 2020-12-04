@@ -34,8 +34,9 @@ class GoogleSearchConsole:
     DEFAULT_SEARCHTYPES = ['web', 'image', 'video']
     DEFAULT_SEARCHTYPE = 'web'
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = connection.mongodb
         self.bigquery = None
@@ -43,8 +44,6 @@ class GoogleSearchConsole:
     def run(self):
         print('Running aggregation GSC Importer:')
         timer_run = time()
-
-        configuration = self.configuration.aggregations.get_custom_configuration_aggregation('google_search_console')
         import_properties = []
 
         if self.mongodb.has_collection(GoogleSearchConsole.COLLECTION_NAME_RETRY):
@@ -57,8 +56,9 @@ class GoogleSearchConsole:
                 retry['requestDate'] = retry['requestDate'].date()
                 import_properties.append(retry)
 
-        if 'properties' in configuration.settings and type(configuration.settings['properties']) is list:
-            for property_configuration in configuration.settings['properties']:
+        if 'properties' in self.module_configuration.settings and \
+                type(self.module_configuration.settings['properties']) is list:
+            for property_configuration in self.module_configuration.settings['properties']:
                 credentials = None
                 request_days_ago = 3
                 dimensions = GoogleSearchConsole.DEFAULT_DIMENSIONS
@@ -96,7 +96,7 @@ class GoogleSearchConsole:
                 table_name = None
                 dataset_name = None
 
-                if 'bigquery' == configuration.database:
+                if 'bigquery' == self.module_configuration.database:
                     if 'tablename' in property_configuration and type(property_configuration['tablename']) is str:
                         table_name = property_configuration['tablename']
                     else:
@@ -116,7 +116,7 @@ class GoogleSearchConsole:
                     'searchTypes': search_types,
                     'previousData': previous_data,
                     'aggregationType': aggregation_type,
-                    'database': configuration.database,
+                    'database': self.module_configuration.database,
                     'tableName': table_name,
                     'datasetName': dataset_name,
                 }

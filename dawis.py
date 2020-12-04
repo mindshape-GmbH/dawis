@@ -33,8 +33,8 @@ def setup_periodic_tasks(sender, **kwargs):
         with open(Path.var_folder_path() + '/' + configuration.hash + '.pickle', 'wb') as handle:
             pickle.dump(configuration, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        for aggregationModule in configuration.aggregations.config.values():
-            module = aggregationModule.name
+        for configuration_key, aggregationModule in configuration.aggregations.config.items():
+            module = aggregationModule.module
             cron = aggregationModule.cron
 
             sender.autodiscover_tasks(['modules.aggregation.custom'], module)
@@ -44,12 +44,13 @@ def setup_periodic_tasks(sender, **kwargs):
                 sender.add_periodic_task(
                     crontab(minute, hour, day_week, day_month, month),
                     run,
-                    [configuration.hash, module, 'modules.aggregation.custom'],
-                    time_limit=aggregationModule.runtime_limit
+                    [configuration.hash, configuration_key, module, 'modules.aggregation.custom'],
+                    time_limit=aggregationModule.runtime_limit,
+                    name='aggregation_' + configuration_key
                 )
 
-        for operationModule in configuration.operations.config.values():
-            module = operationModule.name
+        for configuration_key, operationModule in configuration.operations.config.items():
+            module = operationModule.module
             cron = operationModule.cron
 
             sender.autodiscover_tasks(['modules.operation.custom'], module)
@@ -59,8 +60,9 @@ def setup_periodic_tasks(sender, **kwargs):
                 sender.add_periodic_task(
                     crontab(minute, hour, day_week, day_month, month),
                     run,
-                    [configuration.hash, module, 'modules.operation.custom'],
-                    time_limit=operationModule.runtime_limit
+                    [configuration.hash, configuration_key, module, 'modules.operation.custom'],
+                    time_limit=operationModule.runtime_limit,
+                    name='operation_' + configuration_key
                 )
 
 

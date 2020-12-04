@@ -237,7 +237,7 @@ class ConfigurationLoader:
     @staticmethod
     def _process_configuration_bigquery(plain_configuration: dict) -> ConfigurationBigQuery:
         key = 'databases'
-        additionalDatasets = {}
+        additional_datasets = {}
         credentials = None
 
         if 'bigquery' in plain_configuration[key] and type(plain_configuration[key]['bigquery']) is dict:
@@ -260,7 +260,7 @@ class ConfigurationLoader:
                 for additionalDataset, additionalDataset_configuration in \
                         plain_configuration[key]['bigquery']['additionalDatasets'].items():
                     additionalDataset_configuration['name'] = additionalDataset
-                    additionalDatasets[additionalDataset] = ConfigurationLoader._process_configuration_bigquerydataset(
+                    additional_datasets[additionalDataset] = ConfigurationLoader._process_configuration_bigquerydataset(
                         project,
                         additionalDataset_configuration
                     )
@@ -268,7 +268,7 @@ class ConfigurationLoader:
             if 'credentials' in plain_configuration[key]['bigquery']:
                 credentials = abspath(plain_configuration[key]['bigquery']['credentials'])
 
-            return ConfigurationBigQuery(project, dataset, additionalDatasets, credentials)
+            return ConfigurationBigQuery(project, dataset, additional_datasets, credentials)
         else:
             raise ConfigurationMissingError(key + ' -> bigquery')
 
@@ -360,12 +360,17 @@ class ConfigurationLoader:
     def _process_configuration_aggregation(configuration_aggregations: dict, key: str) -> ConfigurationAggregation:
         urlsets = []
         settings = {}
-        name = None
+        module = None
         cron = None
         runtime_limit = DEFAULT_MODULE_RUNTIME_LIMIT
         database = 'mongodb'
 
         if key in configuration_aggregations and type(configuration_aggregations[key]) is dict:
+            if 'module' in configuration_aggregations[key] and type(configuration_aggregations[key]['module']) is str:
+                module = configuration_aggregations[key]['module']
+            else:
+                module = key
+
             if 'urlsets' in configuration_aggregations[key] and type(
                     configuration_aggregations[key]['urlsets']
             ) is list:
@@ -387,15 +392,13 @@ class ConfigurationLoader:
                     type(configuration_aggregations[key]['database']) is str:
                 database = configuration_aggregations[key]['database']
 
-            name = key
-
-        if name is None:
-            raise ConfigurationInvalidError('Invalid aggregation configuration')
+        if module is None:
+            raise ConfigurationInvalidError('Missing module key in configuration')
 
         if cron is None:
-            raise ConfigurationMissingError('Missing cron command for "' + name + '"')
+            raise ConfigurationMissingError('Missing cron command for "' + key + '"')
 
-        return ConfigurationAggregation(name, cron, urlsets, settings, database, runtime_limit)
+        return ConfigurationAggregation(module, cron, urlsets, settings, database, runtime_limit)
 
     @staticmethod
     def _process_configuration_operations(plain_configuration: dict) -> ConfigurationOperations:
@@ -419,10 +422,16 @@ class ConfigurationLoader:
         checks = {}
         database = 'orm'
         settings = {}
+        module = None
         cron = None
         runtime_limit = DEFAULT_MODULE_RUNTIME_LIMIT
 
         if key in configuration_operations and type(configuration_operations[key]) is dict:
+            if 'module' in configuration_operations[key] and type(configuration_operations[key]['module']) is str:
+                module = configuration_operations[key]['module']
+            else:
+                module = key
+
             if 'urlsets' in configuration_operations[key] and type(configuration_operations[key]['urlsets']) is list:
                 urlsets = configuration_operations[key]['urlsets']
 
@@ -447,4 +456,4 @@ class ConfigurationLoader:
             if 'settings' in configuration_operations[key] and type(configuration_operations[key]['settings']) is dict:
                 settings = configuration_operations[key]['settings']
 
-        return ConfigurationOperation(key, cron, urlsets, checks, database, settings, runtime_limit)
+        return ConfigurationOperation(module, cron, urlsets, checks, database, settings, runtime_limit)

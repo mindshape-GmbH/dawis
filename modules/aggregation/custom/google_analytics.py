@@ -285,8 +285,9 @@ class GoogleAnalytics:
         r'^calcMetric_\w*$',
     ]
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = connection.mongodb
         self.bigquery = None
@@ -295,12 +296,10 @@ class GoogleAnalytics:
         print('Running Google Analytics Module:')
         timer_run = time()
 
-        module_configuration = self.configuration.aggregations.get_custom_configuration_aggregation('google_analytics')
-
-        if 'configurations' in module_configuration.settings and \
-                type(module_configuration.settings['configurations']) is list:
-            for configuration in module_configuration.settings['configurations']:
-                self._process_configuration(configuration, module_configuration.database)
+        if 'configurations' in self.module_configuration.settings and \
+                type(self.module_configuration.settings['configurations']) is list:
+            for configuration in self.module_configuration.settings['configurations']:
+                self._process_configuration(configuration, self.module_configuration.database)
 
         print('\ncompleted: {:s}'.format(str(timedelta(seconds=int(time() - timer_run)))))
 

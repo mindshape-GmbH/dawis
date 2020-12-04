@@ -22,11 +22,12 @@ class _DataNotAvailableYet(Exception):
 class GoogleSearchConsole:
     ROW_LIMIT = 25000
 
-    def __init__(self, configuration: Configuration, connection: Connection):
+    def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         if not connection.has_bigquery() and not connection.has_mongodb():
             raise ConfigurationMissingError('Missing a database configuration for this operation')
 
         self.configuration = configuration
+        self.module_configuration = configuration.operations.get_custom_configuration_operation(configuration_key)
         self.connection = connection
         self.mongodb = connection.mongodb
         self.bigquery = None
@@ -34,7 +35,6 @@ class GoogleSearchConsole:
     def run(self):
         print('Running operation GSC Matching:')
 
-        configuration = self.configuration.operations.get_custom_configuration_operation('google_search_console')
         processing_configurations = []
 
         if self.mongodb.has_collection(AggregationGoogleSearchConsole.COLLECTION_NAME_RETRY):
@@ -47,8 +47,9 @@ class GoogleSearchConsole:
                 retry['requestDate'] = retry['requestDate'].date()
                 processing_configurations.append(retry)
 
-        if 'properties' in configuration.settings and type(configuration.settings['properties']) is list:
-            for property_configuration in configuration.settings['properties']:
+        if 'properties' in self.module_configuration.settings and \
+                type(self.module_configuration.settings['properties']) is list:
+            for property_configuration in self.module_configuration.settings['properties']:
                 input_dataset = None
                 output_dataset = None
                 exclude_input_fields = []
@@ -72,14 +73,14 @@ class GoogleSearchConsole:
 
                 if 'inputDataset' in property_configuration and type(property_configuration['inputDataset']) is str:
                     input_dataset = property_configuration['inputDataset']
-                elif 'bigquery' == configuration.database:
+                elif 'bigquery' == self.module_configuration.database:
                     raise ConfigurationMissingError('input dataset is missing')
 
                 if 'outputDataset' in property_configuration and type(
                         property_configuration['outputDataset']
                 ) is str:
                     output_dataset = property_configuration['outputDataset']
-                elif 'bigquery' == configuration.database:
+                elif 'bigquery' == self.module_configuration.database:
                     raise ConfigurationMissingError('output dataset is missing')
 
                 if 'excludeInputFields' in property_configuration and type(
@@ -96,7 +97,7 @@ class GoogleSearchConsole:
                 request_date = date.today() - timedelta(days=request_days_ago)
 
                 processing_configuration = {
-                    'database': configuration.database,
+                    'database': self.module_configuration.database,
                     'property': gsc_property,
                     'requestDate': request_date,
                     'inputTable': input_table,
