@@ -9,6 +9,7 @@ from google.cloud import bigquery
 from google.cloud.bigquery import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.dataset import DatasetReference
+from google.cloud.bigquery.query import ScalarQueryParameter
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table, TableReference
 from google.cloud.bigquery.job import QueryJob
@@ -238,14 +239,23 @@ class BigQuery:
             }
         )
 
-    def query(self, query: str) -> QueryJob:
-        query_job = self._client.query(query)
+    def query(self, query: str, parameters: Sequence[ScalarQueryParameter] = None, client: Client = None) -> QueryJob:
+        if type(client) is not Client:
+            client = self._client
+
+        if parameters is None:
+            parameters = []
+
+        query_job = client.query(
+            query,
+            job_config=bigquery.QueryJobConfig(query_parameters=parameters)
+        )
 
         if type(query_job.errors) is list and 0 < len(query_job.errors):
             raise QueryError(query_job.errors, query)
 
         try:
-            rows = query_job.result()
+            query_job.result()
         except BadRequest as error:
             raise QueryError(error.errors, query)
 
