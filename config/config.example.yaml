@@ -5,6 +5,7 @@ databases:
     dbname: 'dawis'
     username: ''
     password: ''
+
   orm:
     dbtype: 'mysql'
     host: '127.0.0.1'
@@ -62,6 +63,7 @@ aggregations:
       - 'shop'
     settings:
       useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+
   pagespeed:
     cron: '0 * * * *'
     urlsets:
@@ -69,12 +71,14 @@ aggregations:
     settings:
       apikey: ''
       useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+
   robotstxt:
     cron: '*/10 * * * *'
     urlsets:
       - 'robotstxtcheck'
     settings:
       useragent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36'
+
   google_search_console:
     cron: '0 0 * * *'
     database: 'bigquery'
@@ -95,6 +99,7 @@ aggregations:
             - 'web'
             - 'image'
             - 'video'
+
   google_analytics:
     cron: '0 3 * * *'
     database: 'bigquery'
@@ -120,6 +125,7 @@ aggregations:
             - 'ga:pageviews'
           views:
             - my_view_id
+
   sistrix_domain:
     cron: '0 1 * * *'
     database: 'bigquery'
@@ -162,6 +168,7 @@ operations:
       - url: 'shop'
         checks:
           count_headline_h1: 1
+
   metatags:
     cron: '*/5 * * * *'
     database: 'orm'
@@ -214,6 +221,7 @@ operations:
             has_canonical: true
             canonical_is_self_referencing: true
             canonical_href_200: true
+
   responseheader:
     cron: '*/5 * * * *'
     database: 'orm'
@@ -246,6 +254,7 @@ operations:
             assert: true
           no_index:
             assert: false
+
   pagespeed:
     cron: '*/5 * * * *'
     database: 'orm'
@@ -289,6 +298,7 @@ operations:
       unminified_js:
         desktop: 0.5
         mobile: 0.5
+
   robotstxt:
     cron: '*/5 * * * *'
     database: 'orm'
@@ -297,6 +307,7 @@ operations:
         checks:
           status_code: 200
           has_sitemap_xml: true
+
   google_search_console:
     cron: '0 2 * * *'
     database: 'bigquery'
