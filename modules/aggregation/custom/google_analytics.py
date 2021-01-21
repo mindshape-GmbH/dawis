@@ -349,7 +349,7 @@ class GoogleAnalytics:
                 type(configuration['segmentId']) is int or
                 type(configuration['segmentId']) is float
         ):
-            segment_id = str(configuration['segmentid'])
+            segment_id = str(configuration['segmentId'])
 
         if 'views' in configuration and type(configuration['views']) is list:
             for view in configuration['views']:
