@@ -308,6 +308,8 @@ class GoogleAnalytics:
         dimensions = None
         metrics = None
         segment_id = None
+        dimension_filter_clauses = {}
+        metric_filter_clauses = {}
         table_reference = None
 
         if 'credentials' in configuration and type(configuration['credentials']) is str:
@@ -351,6 +353,12 @@ class GoogleAnalytics:
         ):
             segment_id = str(configuration['segmentId'])
 
+        if 'dimensionFilterClauses' in configuration and type(configuration['dimensionFilterClauses']) is dict:
+            dimension_filter_clauses = configuration['dimensionFilterClauses']
+
+        if 'metricFilterClauses' in configuration and type(configuration['metricFilterClauses']) is dict:
+            metric_filter_clauses = configuration['metricFilterClauses']
+
         if 'views' in configuration and type(configuration['views']) is list:
             for view in configuration['views']:
                 try:
@@ -359,6 +367,8 @@ class GoogleAnalytics:
                         dimensions,
                         metrics,
                         segment_id,
+                        dimension_filter_clauses,
+                        metric_filter_clauses,
                         request_date,
                         database,
                         table_reference
@@ -375,6 +385,8 @@ class GoogleAnalytics:
             dimensions: list,
             metrics: list,
             segment_id: str,
+            dimension_filter_clauses: dict,
+            metric_filter_clauses: dict,
             request_date: date,
             database: str,
             table_reference: TableReference = None
@@ -414,6 +426,12 @@ class GoogleAnalytics:
 
             if segment_id is not None and 0 < len(segment_id):
                 request['reportRequests'][0]['segments'] = [{'segmentId': segment_id}]
+
+            if 0 < len(dimension_filter_clauses):
+                request['reportRequests'][0]['dimensionFilterClauses'] = dimension_filter_clauses
+
+            if 0 < len(metric_filter_clauses):
+                request['reportRequests'][0]['metricFilterClauses'] = metric_filter_clauses
 
             response = self.api_service.reports().batchGet(body=request).execute()
 
