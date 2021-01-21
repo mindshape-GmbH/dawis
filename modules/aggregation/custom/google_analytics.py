@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from pandas import DataFrame
 from os.path import abspath
 from datetime import datetime, date, timedelta
-from time import time
+from time import time, sleep
 import logging
 import re
 
@@ -365,6 +365,7 @@ class GoogleAnalytics:
                     )
 
                     print(' - OK')
+                    sleep(10)
                 except _DataAlreadyExistError:
                     print(' - EXISTS')
 
@@ -409,6 +410,7 @@ class GoogleAnalytics:
 
             if next_page_token is not None:
                 request['reportRequests'][0]['pageToken'] = str(next_page_token)
+                sleep(10)
 
             if segment_id is not None and 0 < len(segment_id):
                 request['reportRequests'][0]['segments'] = [{'segmentId': segment_id}]
