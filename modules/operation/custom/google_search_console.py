@@ -378,7 +378,6 @@ class GoogleSearchConsole:
 
     def _process_data_for_bigquery(self, data: DataFrame, output_tablereference: TableReference):
         job_config = LoadJobConfig()
-        job_config.destination = output_tablereference
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
         job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
 

@@ -491,7 +491,6 @@ class GoogleAnalytics:
             table_reference: TableReference
     ):
         job_config = LoadJobConfig()
-        job_config.destination = table_reference
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
         job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
         job_config.schema = [

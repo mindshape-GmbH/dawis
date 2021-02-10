@@ -7,7 +7,7 @@ from google.api_core.exceptions import BadRequest
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import TableReference, TimePartitioning, TimePartitioningType
 from google.cloud.bigquery.job import LoadJobConfig, WriteDisposition
-from pandas import DataFrame, Series
+from pandas import DataFrame
 from datetime import datetime, date, timedelta
 from typing import Sequence
 from time import time
@@ -255,7 +255,6 @@ class SistrixDomain:
         rows_dataframe = DataFrame.from_records(rows)
 
         job_config = LoadJobConfig()
-        job_config.destination = table_reference
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
         job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
         job_config.schema = [
