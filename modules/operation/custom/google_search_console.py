@@ -31,6 +31,7 @@ class GoogleSearchConsole:
         self.connection = connection
         self.mongodb = connection.mongodb
         self.bigquery = None
+        self.matching_group_regex = re.compile(r'\$(\d+)')
 
     def run(self):
         print('Running operation GSC Matching:')
@@ -369,9 +370,17 @@ class GoogleSearchConsole:
 
         return data
 
-    @staticmethod
-    def _process_expression_regex(row: Series, regex: re.Pattern, input_field: str, output_field: str, output: str):
-        if regex.search(str(row[input_field])) is not None:
+    def _process_expression_regex(self, row: Series, regex: re.Pattern, input_field: str, output_field: str, output: str):
+        value = str(row[input_field])
+        match = regex.search(value)
+
+        if type(match) is re.Match:
+            for group in self.matching_group_regex.search(output).groups():
+                try:
+                    output = output.replace('$' + group, match.group(int(group)))
+                except IndexError:
+                    pass
+
             row[output_field] = output
 
         return row
