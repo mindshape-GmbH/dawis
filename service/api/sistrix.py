@@ -1,4 +1,5 @@
 from inspect import getmembers
+from datetime import date, datetime
 import requests
 
 
@@ -82,6 +83,8 @@ class Client:
             for parameter, value in parameters.items():
                 if type(value) is bool:
                     value = 'true' if value else 'false'
+                if type(value) is date or type(value) is datetime:
+                    value = value.strftime('%Y-%m-%d')
                 if type(value) is not str:
                     value = str(value)
 
