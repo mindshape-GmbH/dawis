@@ -4,9 +4,10 @@ from service.api.sistrix import Client as SistrixApiClient
 from utilities.configuration import Configuration
 from utilities.exceptions import ConfigurationInvalidError, ConfigurationMissingError
 from google.api_core.exceptions import BadRequest
+from google.cloud.bigquery.job import LoadJobConfig, WriteDisposition
+from google.cloud.bigquery.enums import SqlTypeNames
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import TableReference, TimePartitioning, TimePartitioningType
-from google.cloud.bigquery.job import LoadJobConfig, WriteDisposition
 from pandas import DataFrame
 from datetime import datetime, date, timedelta
 from typing import Sequence
@@ -45,7 +46,7 @@ class SistrixDomain:
         timer_run = time()
 
         if 'configurations' in self.module_configuration.settings and \
-                type(self.module_configuration.settings['configurations']) is list:
+            type(self.module_configuration.settings['configurations']) is list:
             for configuration in self.module_configuration.settings['configurations']:
                 self._process_request_configuration(configuration, self.module_configuration.database)
 
@@ -59,6 +60,7 @@ class SistrixDomain:
         urls = None
         daily = False
         on_weekday = None
+        add_parameters_to_result = False
         methods = []
         dataset = None
         table_reference = None
@@ -81,12 +83,15 @@ class SistrixDomain:
             urls = configuration['urls']
 
         if 'onlyOnWeekday' in configuration and (
-                type(configuration['onlyOnWeekday']) is str or
-                type(configuration['onlyOnWeekday']) is int
+            type(configuration['onlyOnWeekday']) is str or
+            type(configuration['onlyOnWeekday']) is int
         ):
             on_weekday = configuration['onlyOnWeekday']
         else:
             daily = True
+
+        if 'addParametersToResult' in configuration and type(configuration['addParametersToResult']) is bool:
+            add_parameters_to_result = configuration['addParametersToResult']
 
         if 'methods' in configuration and type(configuration['methods']) is list:
             for method in configuration['methods']:
@@ -111,8 +116,8 @@ class SistrixDomain:
                             )
                         )
 
-                if daily and 'domain.' + method['method'] in SistrixDomain.DAILY_PARAMETER_ALLOWED:
-                    method['parameters']['daily'] = True
+                if method['method'] in SistrixDomain.DAILY_PARAMETER_ALLOWED:
+                    method['parameters']['daily'] = daily
 
                 methods.append(method)
 
@@ -132,19 +137,19 @@ class SistrixDomain:
                 raise ConfigurationMissingError('You have to set at least a table if you want to use bigquery')
 
         if (domain is not None and (host is not None or paths is not None or urls is not None)) or \
-                (host is not None and (domain is not None or paths is not None or urls is not None)) or \
-                (paths is not None and (host is not None or domain is not None or urls is not None)) or \
-                (urls is not None and (host is not None or paths is not None or domain is not None)):
+            (host is not None and (domain is not None or paths is not None or urls is not None)) or \
+            (paths is not None and (host is not None or domain is not None or urls is not None)) or \
+            (urls is not None and (host is not None or paths is not None or domain is not None)):
             raise ConfigurationInvalidError('You can\'t use domain, host, path or url parallel to each other')
 
         if domain is None and host is None and paths is None and urls is None:
             raise ConfigurationInvalidError('You need one of these parameters: "domain, host, path, url"')
 
         if on_weekday is not None and (
-                # weekday format may get influnced by locale
-                on_weekday != '{:%a}'.format(datetime.now()) and
-                on_weekday != '{:%A}'.format(datetime.now()) and
-                on_weekday != datetime.now().isoweekday()
+            # weekday format may get influnced by locale
+            on_weekday != '{:%a}'.format(datetime.now()) and
+            on_weekday != '{:%A}'.format(datetime.now()) and
+            on_weekday != datetime.now().isoweekday()
         ):
             return
 
@@ -164,57 +169,84 @@ class SistrixDomain:
 
         responses = []
 
+        sistrix_api_client = SistrixApiClient(api_key)
+
         for request in requests:
             for key, value in request.items():
-                if 'bigquery' == database and self._bigquery_check_has_existing_data(
-                        key,
-                        value,
-                        table_reference,
-                        request_date
-                ):
-                    continue
-                elif 'mongodb' == database and self._mongodb_check_has_existing_data(key, value, request_date):
-                    continue
+                response_row = {}
 
-                responses.append(
-                    {
-                        key: value,
-                        'date': request_date,
-                        **self._sistrix_api_requests(api_key, methods, **{key: value})
-                    }
-                )
+                for method in methods:
+                    if 'bigquery' == database:
+                        if self._bigquery_check_has_existing_data(
+                            table_reference,
+                            request_date,
+                            add_parameters_to_result,
+                            method['parameters']
+                        ):
+                            continue
+                    else:
+                        if self._mongodb_check_has_existing_data(request_date, method['parameters']):
+                            continue
 
-        if table_reference is None and 'mongodb' == database:
-            self.mongodb.insert_documents(SistrixDomain.COLLECTION_NAME, responses)
-        elif 'bigquery' == database:
-            self._process_response_rows_for_bigquery(responses, methods, table_reference)
-        else:
-            ConfigurationInvalidError('Invalid database configuration for this module')
+                    response_row = self._sistrix_api_requests(
+                        sistrix_api_client,
+                        method,
+                        response_row,
+                        add_parameters_to_result,
+                        **{key: value}
+                    )
+
+                    if add_parameters_to_result:
+                        responses.append(
+                            {
+                                key: value,
+                                'date': request_date,
+                                **response_row
+                            }
+                        )
+
+                if not add_parameters_to_result:
+                    responses.append(
+                        {
+                            key: value,
+                            'date': request_date,
+                            **response_row
+                        }
+                    )
+
+        if 0 < len(responses):
+            if table_reference is None and 'mongodb' == database:
+                self.mongodb.insert_documents(SistrixDomain.COLLECTION_NAME, responses)
+            elif 'bigquery' == database:
+                self._process_response_rows_for_bigquery(responses, methods, table_reference)
+            else:
+                ConfigurationInvalidError('Invalid database configuration for this module')
 
     def _sistrix_api_requests(
-            self,
-            api_key: str,
-            methods: list,
-            **request_parameters
+        self,
+        sistrix_api_client: SistrixApiClient,
+        method: dict,
+        response_row: dict,
+        add_parameters_to_result: bool,
+        **request_parameters
     ) -> dict:
-        sistrix_api_client = SistrixApiClient(api_key)
-        response_row = {}
+        response = sistrix_api_client.request(method['method'], {**request_parameters, **method['parameters']})
 
-        for method in methods:
-            response = sistrix_api_client.request(method['method'], {**request_parameters, **method['parameters']})
+        if SistrixApiClient.ENDPOINT_DOMAIN_VISIBILITYINDEX == method['method']:
+            response_row[method['fieldName']] = self._process_response_visibilityindex(response)
+        elif SistrixApiClient.ENDPOINT_DOMAIN_PAGES == method['method']:
+            response_row[method['fieldName']] = self._process_response_pages(response)
+        elif SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO == method['method']:
+            response_row[method['fieldName']] = self._process_response_keywordcount_seo(response)
+        elif SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO_TOP10 == method['method']:
+            response_row[method['fieldName']] = self._process_response_keywordcount_seo_top10(response)
+        else:
+            raise ConfigurationInvalidError(
+                'Method "{}" not mappable for response processing'.format(method['method'])
+            )
 
-            if SistrixApiClient.ENDPOINT_DOMAIN_VISIBILITYINDEX == method['method']:
-                response_row[method['fieldName']] = self._process_response_visibilityindex(response)
-            elif SistrixApiClient.ENDPOINT_DOMAIN_PAGES == method['method']:
-                response_row[method['fieldName']] = self._process_response_pages(response)
-            elif SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO == method['method']:
-                response_row[method['fieldName']] = self._process_response_keywordcount_seo(response)
-            elif SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO_TOP10 == method['method']:
-                response_row[method['fieldName']] = self._process_response_keywordcount_seo_top10(response)
-            else:
-                raise ConfigurationInvalidError(
-                    'Method "{}" not mappable for response processing'.format(method['method'])
-                )
+        if add_parameters_to_result:
+            response_row = {**response_row, **method['parameters']}
 
         return response_row
 
@@ -247,10 +279,10 @@ class SistrixDomain:
             raise _DataNotAvailableYet()
 
     def _process_response_rows_for_bigquery(
-            self,
-            rows: Sequence[dict],
-            methods: Sequence[dict],
-            table_reference: TableReference
+        self,
+        rows: Sequence[dict],
+        methods: Sequence[dict],
+        table_reference: TableReference
     ):
         rows_dataframe = DataFrame.from_records(rows)
 
@@ -277,42 +309,55 @@ class SistrixDomain:
         field_type = 'STRING'
         field_mode = 'REQUIRED'
 
-        if 'date' == column:
-            field_type = 'DATE'
-
         method = next((method['method'] for method in methods if method['fieldName'] == column), None)
 
         if SistrixApiClient.ENDPOINT_DOMAIN_VISIBILITYINDEX == method:
-            field_type = 'FLOAT64'
+            field_type = SqlTypeNames.FLOAT
+            field_mode = 'NULLABLE'
         if SistrixApiClient.ENDPOINT_DOMAIN_PAGES == method or \
-                SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO == method or \
-                SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO_TOP10 == method:
-            field_type = 'INT64'
+            SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO == method or \
+            SistrixApiClient.ENDPOINT_DOMAIN_KEYWORDCOUNT_SEO_TOP10 == method:
+            field_type = SqlTypeNames.INTEGER
+            field_mode = 'NULLABLE'
+
+        if 'date' == column:
+            field_type = SqlTypeNames.DATE
+
+        if 'daily' == column or 'mobile' == column:
+            field_type = SqlTypeNames.BOOLEAN
 
         return SchemaField(column, field_type, field_mode)
 
     def _bigquery_check_has_existing_data(
-            self,
-            key: str,
-            value: str,
-            table_reference: TableReference,
-            request_date: date
+        self,
+        table_reference: TableReference,
+        request_date: date,
+        add_parameters_to_result: bool,
+        parameters: dict
     ) -> bool:
         if not self.bigquery.has_table(table_reference.table_id, table_reference.dataset_id):
             return False
 
-        query_job = self.bigquery.query(
-            # Using an alias is necessary due to bigquery issues when column name equals the table name
-            'SELECT COUNT(*) FROM `{dataset}`.`{table}` AS {key}_table '
-            'WHERE `date` = "{date:%Y-%m-%d}" '
-            'AND `{key}` = "{value}"'.format(
-                dataset=table_reference.dataset_id,
-                table=table_reference.table_id,
-                date=request_date,
-                key=key,
-                value=value
-            )
+        # Using an alias is necessary due to bigquery issues when column name equals the table name
+        query = 'SELECT COUNT(*) FROM `{dataset}`.`{table}` AS count_table WHERE `date` = "{date:%Y-%m-%d}" '.format(
+            dataset=table_reference.dataset_id,
+            table=table_reference.table_id,
+            date=request_date
         )
+
+        if add_parameters_to_result:
+            for key, value in parameters.items():
+                if type(value) is str:
+                    value = '"{value}"'.format(value=value)
+                if type(value) is bool:
+                    value = '{value}'.format(value='true' if value else 'false')
+
+                query += 'AND `{key}` = {value} '.format(
+                    key=key,
+                    value=value
+                )
+
+        query_job = self.bigquery.query(query)
 
         count = 0
 
@@ -321,15 +366,15 @@ class SistrixDomain:
 
         return 0 < count
 
-    def _mongodb_check_has_existing_data(self, key: str, value: str, request_date: date) -> bool:
+    def _mongodb_check_has_existing_data(self, request_date: date, parameters: dict) -> bool:
         if not self.mongodb.has_collection(SistrixDomain.COLLECTION_NAME):
             return False
 
         return 0 < self.mongodb.find(
             SistrixDomain.COLLECTION_NAME,
             {
-                key: value,
-                'date': datetime.combine(request_date, datetime.min.time())
+                'date': datetime.combine(request_date, datetime.min.time()),
+                **parameters
             },
             cursor=True
         ).count()
