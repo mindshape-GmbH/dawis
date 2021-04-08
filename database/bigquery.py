@@ -104,13 +104,13 @@ class BigQuery:
     def has_table(self, table_name, dataset_name=None) -> bool:
         has_table = False
 
-        if dataset_name is not None:
+        if dataset_name is None or dataset_name == self._dataset.dataset_id:
+            dataset = self._dataset
+        else:
             if dataset_name not in self._additional_datasets:
                 raise DatasetDoesNotExistError('The dataset "' + dataset_name + '" does not exist')
 
             dataset = self._additional_datasets[dataset_name]
-        else:
-            dataset = self._dataset
 
         for table_listitem in self._client.list_tables(dataset):
             if table_listitem.table_id == table_name:
