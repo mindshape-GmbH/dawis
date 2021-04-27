@@ -186,6 +186,38 @@ aggregations:
           dataset: 'Rankalyst'
           tablename: 'ranking'
 
+  xpath:
+    cron: '0 3 * * *'
+    database: 'bigquery'
+    settings:
+      dataset: 'Xpath'
+      tablename: 'xpath'
+      configurations:
+        - cluster: 'someclusters'
+          query: '/html/head/title'
+          operation: 'regex_count'
+          operationOptions:
+            expression: '^Title.*'
+            caseSensitive: false
+
+        - cluster: 'someclusters'
+          query: '/html/head/meta[@name="description"]/@content'
+          operation: 'regex_count'
+          operationOptions:
+            expression: '^Description.*'
+            caseSensitive: false
+
+        - cluster: 'someclusters'
+          query: '//h1'
+
+        - cluster: 'someclusters|clustername'
+          query: '//div[contains(@class, "some-class")]//p'
+      clusters:
+        someclusters:
+          clustername:
+            - 'https://www.domain.tld/some/path/'
+            - 'https://www.domain.tld/some/other/path'
+
 operations:
   htmlheadings:
     cron: '*/5 * * * *'
