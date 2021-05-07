@@ -285,6 +285,7 @@ class SistrixDomain:
         table_reference: TableReference
     ):
         rows_dataframe = DataFrame.from_records(rows)
+        rows_dataframe['date'] = rows_dataframe['date'].apply(lambda x: x.date())
 
         job_config = LoadJobConfig()
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
