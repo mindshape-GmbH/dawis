@@ -3,7 +3,7 @@ from utilities.configuration import Configuration
 from utilities.configuration import ConfigurationORM
 from utilities.exceptions import ConfigurationMissingError
 from sqlalchemy import create_engine
-from sqlalchemy.engine.result import ResultProxy
+from sqlalchemy.engine.result import Result
 from sqlalchemy_utils import database_exists, create_database
 
 
@@ -42,5 +42,5 @@ class ORM:
     def is_connected(self):
         return self._connected
 
-    def execute(self, statement) -> ResultProxy:
+    def execute(self, statement) -> Result:
         return self._connection.execute(statement)
