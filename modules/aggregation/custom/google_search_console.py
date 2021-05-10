@@ -3,7 +3,7 @@ from database.bigquery import BigQuery
 from utilities.configuration import Configuration
 from utilities.exceptions import ConfigurationMissingError
 from googleapiclient.discovery import build, Resource
-from googleapiclient.errors import UnknownApiNameOrVersion
+from googleapiclient.errors import UnknownApiNameOrVersion, HttpError
 from google.api_core.exceptions import BadRequest
 from google.cloud.bigquery import LoadJobConfig, TimePartitioning, TimePartitioningType, TableReference, SchemaField
 from google.cloud.bigquery.job import WriteDisposition
@@ -40,6 +40,9 @@ class GoogleSearchConsole:
         self.connection = connection
         self.mongodb = connection.mongodb
         self.bigquery = None
+
+        if 'bigquery' == self.module_configuration.database:
+            self.bigquery = self.connection.bigquery
 
     def run(self):
         print('Running aggregation GSC Importer:')
@@ -153,7 +156,7 @@ class GoogleSearchConsole:
                     self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
             except _DataAlreadyExistError:
                 print(' !!! already exists')
-            except (_DataNotAvailableYet, UnknownApiNameOrVersion):
+            except (_DataNotAvailableYet, UnknownApiNameOrVersion, HttpError):
                 print(' !!! not available yet')
 
                 existing_retry = None
