@@ -27,6 +27,7 @@ google-api-python-client = "~=2.6"
 pyarrow = "~=4.0"
 oauth2client = "~=4.1"
 pandas = "~=1.1"
+jinja2 = "~=3.0"
 
 [requires]
 python_version = "3.8"
