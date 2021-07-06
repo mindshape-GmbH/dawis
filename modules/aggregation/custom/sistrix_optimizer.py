@@ -22,6 +22,8 @@ class SistrixOptimizer:
     COLLECTION_NAME = 'sistrix_optimizer'
     API_FORMAT = 'json'
 
+    DEFAULT_API_RANKING_LIMIT = 1000000
+
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
@@ -126,6 +128,9 @@ class SistrixOptimizer:
                         )
                     )
                 elif SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING == method:
+                    if 'limit' not in request:
+                        request['limit'] = self.DEFAULT_API_RANKING_LIMIT
+
                     responses.extend(
                         self._process_ranking_response(
                             api_client.request(method, request),
