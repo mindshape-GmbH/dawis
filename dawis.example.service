@@ -23,6 +23,7 @@ ${CELERY_PIPENV_RUN} multi start ${CELERY_NODES} \
 ExecStop=/bin/sh -c '\
 ${CELERY_PIPENV_RUN} multi stop ${CELERY_NODES} \
 --pidfile=${CELERY_PIDFILE_PATH}/${CELERY_PROJECT}-%n.pid \
+--logfile=${CELERY_LOGFILE_PATH}/${CELERY_PROJECT}/%n%I.log \
 '
 
 ExecReload=/bin/sh -c '\
