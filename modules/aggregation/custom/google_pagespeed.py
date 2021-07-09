@@ -23,6 +23,7 @@ class GooglePagespeed:
     STRATEGIES_ALLOWED = ['desktop', 'mobile', 'both']
     MAX_PARALLEL_REQUESTS = 10
     SECONDS_BETWEEN_REQUESTS = 3
+    SECONDS_BETWEEN_REQUESTS_CHUNKS = 10
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
@@ -141,6 +142,7 @@ class GooglePagespeed:
                 thread = ResultThread(self._process_pagespeed_api, request)
                 thread.start()
                 threads.append(thread)
+                sleep(self.SECONDS_BETWEEN_REQUESTS)
 
             for thread in threads:
                 thread.join()
@@ -179,7 +181,7 @@ class GooglePagespeed:
                     })
 
             if len(requests_chunks) != requests_chunks.index(requests_chunk) + 1:
-                sleep(GooglePagespeed.SECONDS_BETWEEN_REQUESTS)
+                sleep(GooglePagespeed.SECONDS_BETWEEN_REQUESTS_CHUNKS)
 
         return responses, failed_requests, log
 
