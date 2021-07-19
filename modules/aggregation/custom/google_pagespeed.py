@@ -17,6 +17,11 @@ import dateutil
 import re
 
 
+class _InvalidDataException(Exception):
+    def __str__(self):
+        return 'Invalid data returned from API, the site is maybe broken'
+
+
 class GooglePagespeed:
     COLLECTION_NAME = 'google_pagespeed'
 
@@ -46,7 +51,7 @@ class GooglePagespeed:
             api_key = self.module_configuration.settings['apiKey']
 
         if 'configurations' in self.module_configuration.settings and \
-                type(self.module_configuration.settings['configurations']) is list:
+            type(self.module_configuration.settings['configurations']) is list:
             for configuration in self.module_configuration.settings['configurations']:
                 self._process_configuration(configuration, api_key, self.module_configuration.database)
 
@@ -186,11 +191,11 @@ class GooglePagespeed:
         return responses, failed_requests, log
 
     def _process_pagespeed_api(
-            self,
-            url: str,
-            cluster: str,
-            strategy: str,
-            api_key: str
+        self,
+        url: str,
+        cluster: str,
+        strategy: str,
+        api_key: str
     ) -> dict:
         pagespeed_api = build(
             'pagespeedonline',
@@ -289,8 +294,7 @@ class GooglePagespeed:
         load_job = self.bigquery.client.load_table_from_json(log, table_reference, job_config=job_config)
         load_job.result()
 
-    @staticmethod
-    def _process_response(response: dict, url: str, cluster: str, strategy: str) -> dict:
+    def _process_response(self, response: dict, url: str, cluster: str, strategy: str) -> dict:
         loading_experience_dummy = lambda x: {
             'cls': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['percentile'],
             'clsGood': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['distributions'][0]['proportion'],
@@ -344,9 +348,84 @@ class GooglePagespeed:
         }
 
         if 'loadingExperience' in response and (
-                'origin_fallback' not in response['loadingExperience'] or
-                response['loadingExperience']['origin_fallback'] is not True
+            'origin_fallback' not in response['loadingExperience'] or
+            response['loadingExperience']['origin_fallback'] is not True
         ):
             data['loadingExperience'] = loading_experience_dummy('loadingExperience')
 
+        if not self._validate_response_data(data):
+            raise _InvalidDataException()
+
         return data
+
+    def _validate_response_data(self, data: dict) -> bool:
+        if type(data['date']) is not datetime:
+            return False
+
+        if type(data['statusCode']) is not int:
+            return False
+
+        for data_key in ['url', 'strategy', 'cluster']:
+            if type(data[data_key]) is not str:
+                return False
+
+        for data_key in [
+            'cls',
+            'lcp',
+            'fcp',
+            'tbt',
+            'mpfid',
+            'ttfb',
+            'performanceScore',
+            'serverResponseTime',
+            'usesTextCompression',
+            'usesLongCacheTtl',
+            'domSize',
+            'offscreenImages',
+            'usesOptimizedImages',
+            'usesResponsiveImages',
+            'renderBlockingResources',
+            'bootupTime',
+            'mainthreadWorkBreakdown',
+        ]:
+            if type(data['labdata'][data_key]) is not float and type(data['labdata'][data_key]) is not int:
+                return False
+
+        if not self._validate_response_data_loading_experience(data, 'originLoadingExperience'):
+            return False
+
+        if 'loadingExperience' in data:
+            if not self._validate_response_data_loading_experience(data, 'loadingExperience'):
+                return False
+
+        return True
+
+    @staticmethod
+    def _validate_response_data_loading_experience(data: dict, parent_data_key: str) -> bool:
+        for data_key in [
+            'cls',
+            'lcp',
+            'fcp',
+            'fid',
+        ]:
+            if type(data[parent_data_key][data_key]) is not int:
+                return False
+
+        for data_key in [
+            'clsGood',
+            'clsMedium',
+            'clsBad',
+            'lcpGood',
+            'lcpMedium',
+            'lcpBad',
+            'fcpGood',
+            'fcpMedium',
+            'fcpBad',
+            'fidGood',
+            'fidMedium',
+            'fidBad',
+        ]:
+            if type(data[parent_data_key][data_key]) is not float and type(data[parent_data_key][data_key]) is not int:
+                return False
+
+        return True
