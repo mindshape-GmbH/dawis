@@ -155,6 +155,9 @@ class GoogleSearchConsole:
                 if '_id' in import_property:
                     self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
             except _DataAlreadyExistError:
+                if '_id' in import_property:
+                    self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
+
                 print(' !!! already exists')
             except (_DataNotAvailableYet, UnknownApiNameOrVersion, HttpError):
                 print(' !!! not available yet')
