@@ -347,7 +347,7 @@ class GooglePagespeed:
             'loadingExperience': None,
         }
 
-        if 'loadingExperience' in response and (
+        if 'loadingExperience' in response and type(response['loadingExperience']) is dict and (
             'origin_fallback' not in response['loadingExperience'] or
             response['loadingExperience']['origin_fallback'] is not True
         ):
@@ -363,6 +363,9 @@ class GooglePagespeed:
             return False
 
         if type(data['statusCode']) is not int:
+            return False
+
+        if 'labdata' not in data:
             return False
 
         for data_key in ['url', 'strategy', 'cluster']:
@@ -388,13 +391,15 @@ class GooglePagespeed:
             'bootupTime',
             'mainthreadWorkBreakdown',
         ]:
+            if data_key not in data['labdata']:
+                return False
             if type(data['labdata'][data_key]) is not float and type(data['labdata'][data_key]) is not int:
                 return False
 
         if not self._validate_response_data_loading_experience(data, 'originLoadingExperience'):
             return False
 
-        if 'loadingExperience' in data:
+        if 'loadingExperience' in data and type(data['loadingExperience']) is dict:
             if not self._validate_response_data_loading_experience(data, 'loadingExperience'):
                 return False
 
@@ -408,6 +413,8 @@ class GooglePagespeed:
             'fcp',
             'fid',
         ]:
+            if data_key not in data[parent_data_key]:
+                return False
             if type(data[parent_data_key][data_key]) is not int:
                 return False
 
@@ -425,6 +432,8 @@ class GooglePagespeed:
             'fidMedium',
             'fidBad',
         ]:
+            if data_key not in data[parent_data_key]:
+                return False
             if type(data[parent_data_key][data_key]) is not float and type(data[parent_data_key][data_key]) is not int:
                 return False
 
