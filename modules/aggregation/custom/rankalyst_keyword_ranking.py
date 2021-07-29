@@ -94,22 +94,27 @@ class RankalystKeywordRanking:
 
     @staticmethod
     def _process_keyword_ranking(client: RankalysApiClient, project_id):
-        response = client.request(RankalysApiClient.ACTION_PROJECT_KEYWORD_RANKING, {'project_id': project_id})
-
         rankings = []
 
-        for item in response['data']['items']:
-            rankings.append({
-                'project_id': int(project_id),
-                'prev_rank': int(item['prev_rank']),
-                'keyword': str(item['keyword']),
-                'keyword_group': item['keyword_group'] if item['keyword_group'] is not None else None,
-                'ranking': int(item['ranking']),
-                'ranking_change': int(item['ranking_change']),
-                'url': str(item['url']),
-                'date': datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S'),
-                'rank': str(item['rank']),
+        for scalar_type_id, scalar_type_label in RankalysApiClient.PARAMETER_LABEL_SCALAR_TYPE.items():
+            response = client.request(RankalysApiClient.ACTION_PROJECT_KEYWORD_RANKING, {
+                'project_id': project_id,
+                'scrape_type_id': scalar_type_id
             })
+
+            for item in response['data']['items']:
+                rankings.append({
+                    'project_id': int(project_id),
+                    'prev_rank': int(item['prev_rank']),
+                    'keyword': str(item['keyword']),
+                    'keyword_group': item['keyword_group'] if item['keyword_group'] is not None else None,
+                    'ranking': int(item['ranking']),
+                    'ranking_change': int(item['ranking_change']),
+                    'url': str(item['url']),
+                    'date': datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S'),
+                    'rank': str(item['rank']),
+                    'scalar_type': scalar_type_label,
+                })
 
         return rankings
 
@@ -122,15 +127,16 @@ class RankalystKeywordRanking:
         job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
 
         job_config.schema = (
+            SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
+            SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('project_id', SqlTypeNames.INTEGER, 'REQUIRED'),
             SchemaField('prev_rank', SqlTypeNames.INTEGER, 'REQUIRED'),
             SchemaField('keyword', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('keyword_group', SqlTypeNames.STRING, 'REPEATED'),
             SchemaField('ranking', SqlTypeNames.INTEGER, 'REQUIRED'),
             SchemaField('ranking_change', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
-            SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
             SchemaField('rank', SqlTypeNames.STRING, 'REQUIRED'),
+            SchemaField('scalar_type', SqlTypeNames.STRING, 'REQUIRED'),
         )
 
         for ranking in rankings:

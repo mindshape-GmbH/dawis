@@ -16,6 +16,12 @@ class Client:
     ACTION_PROJECT_KEYWORD_RANKING = 'project_keyword_rankings'
     ACTION_PROJECT_KEYWORD_HISTORY = 'project_keyword_history'
 
+    PARAMETER_LABEL_SCALAR_TYPE = {
+        1: 'organic',
+        2: 'local',
+        3: 'mobile',
+    }
+
     def __init__(self, api_key: str, username: str):
         self._api_key = api_key
         self._username = username
