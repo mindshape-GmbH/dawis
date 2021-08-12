@@ -103,15 +103,33 @@ class RankalystKeywordRanking:
             })
 
             for item in response['data']['items']:
+                ranking = None
+                prev_rank = None
+
+                if type(item['ranking']) is int or (
+                    type(item['prev_rank']) is str and item['prev_rank'].isnumeric()
+                ):
+                    prev_rank = int(item['prev_rank'])
+
+                if type(item['ranking']) is int or (
+                    type(item['ranking']) is str and item['ranking'].isnumeric()
+                ):
+                    ranking = int(item['ranking'])
+
+                try:
+                    item_date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+                except TypeError:
+                    item_date = datetime.utcnow()
+
                 rankings.append({
                     'project_id': int(project_id),
-                    'prev_rank': int(item['prev_rank']),
+                    'prev_rank': prev_rank,
                     'keyword': str(item['keyword']),
                     'keyword_group': item['keyword_group'] if item['keyword_group'] is not None else None,
-                    'ranking': int(item['ranking']),
+                    'ranking': ranking,
                     'ranking_change': int(item['ranking_change']),
                     'url': str(item['url']),
-                    'date': datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S'),
+                    'date': item_date,
                     'rank': str(item['rank']),
                     'scalar_type': scalar_type_label,
                 })
@@ -130,10 +148,10 @@ class RankalystKeywordRanking:
             SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
             SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('project_id', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('prev_rank', SqlTypeNames.INTEGER, 'REQUIRED'),
+            SchemaField('prev_rank', SqlTypeNames.INTEGER),
             SchemaField('keyword', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('keyword_group', SqlTypeNames.STRING, 'REPEATED'),
-            SchemaField('ranking', SqlTypeNames.INTEGER, 'REQUIRED'),
+            SchemaField('ranking', SqlTypeNames.INTEGER),
             SchemaField('ranking_change', SqlTypeNames.INTEGER, 'REQUIRED'),
             SchemaField('rank', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('scalar_type', SqlTypeNames.STRING, 'REQUIRED'),
