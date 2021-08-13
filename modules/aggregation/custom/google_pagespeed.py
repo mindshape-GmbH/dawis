@@ -11,6 +11,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
 from datetime import datetime, timedelta
+from dict_hash import sha256
 from time import time, sleep
 from typing import Sequence
 import dateutil
@@ -24,9 +25,11 @@ class _InvalidDataException(Exception):
 
 class GooglePagespeed:
     COLLECTION_NAME = 'google_pagespeed'
+    COLLECTION_NAME_RETRY = 'google_pagespeed_retry'
 
     STRATEGIES_ALLOWED = ['desktop', 'mobile', 'both']
     MAX_PARALLEL_REQUESTS = 10
+    MAX_RETRY_COUNT = 3
     SECONDS_BETWEEN_REQUESTS = 3
     SECONDS_BETWEEN_REQUESTS_CHUNKS = 10
 
@@ -34,7 +37,7 @@ class GooglePagespeed:
         self.configuration = configuration
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
-        self.mongodb = None
+        self.mongodb = connection.mongodb
         self.bigquery = None
 
     def run(self):
@@ -44,8 +47,6 @@ class GooglePagespeed:
 
         if 'bigquery' == self.module_configuration.database:
             self.bigquery = self.connection.bigquery
-        else:
-            self.mongodb = self.connection.mongodb
 
         if 'apiKey' in self.module_configuration.settings and type(self.module_configuration.settings['apiKey']) is str:
             api_key = self.module_configuration.settings['apiKey']
@@ -53,34 +54,17 @@ class GooglePagespeed:
         if 'configurations' in self.module_configuration.settings and \
             type(self.module_configuration.settings['configurations']) is list:
             for configuration in self.module_configuration.settings['configurations']:
-                self._process_configuration(configuration, api_key, self.module_configuration.database)
+                self._process_configuration_cluster(configuration, api_key, self.module_configuration.database)
+
+        if self.mongodb.has_collection(self.COLLECTION_NAME_RETRY):
+            for configuration in self.mongodb.find(self.COLLECTION_NAME_RETRY, {}):
+                requests = configuration.pop('retry_requests', [])
+                self._process_configuration_requests(configuration, requests, self.module_configuration.database)
 
         print('\ncompleted: {:s}'.format(str(timedelta(seconds=int(time() - timer_run)))))
 
-    def _process_configuration(self, configuration: dict, api_key: str, database: str):
+    def _process_configuration_cluster(self, configuration: dict, api_key: str, database: str):
         strategies = ['DESKTOP']
-        table_reference = None
-        log_table_reference = None
-
-        if 'bigquery' == database:
-            if 'tablename' in configuration and type(configuration['tablename']) is str:
-                table_name = configuration['tablename']
-            else:
-                raise ConfigurationMissingError('Missing tablename for pagespeed to bigquery')
-
-            dataset_name = None
-
-            if 'dataset' in configuration and type(configuration['dataset']) is str:
-                dataset_name = configuration['dataset']
-
-            table_reference = self.connection.bigquery.table_reference(table_name, dataset_name)
-
-            if 'logTablename' in configuration and type(configuration['logTablename']) is str:
-                log_table_reference = self.connection.bigquery.table_reference(
-                    configuration['logTablename'],
-                    dataset_name
-                )
-
         cluster = {}
 
         if 'cluster' in configuration and type(configuration['cluster']) is dict:
@@ -104,24 +88,83 @@ class GooglePagespeed:
 
         if 'apiKey' in configuration and type(configuration['apiKey']) is str:
             api_key = configuration['apiKey']
+        else:
+            configuration['apiKey'] = api_key
 
         requests = []
+
+        if 'requests' in configuration:
+            requests = configuration['retry_requests']
+        else:
+            for cluster_name, urls in cluster.items():
+                for url in urls:
+                    for strategy in strategies:
+                        requests.append([url, cluster_name, strategy, api_key, self.MAX_RETRY_COUNT])
+
+        self._process_configuration_requests(configuration, requests, database)
+
+    def _process_configuration_requests(self, configuration: dict, requests: list, database: str):
+        table_reference = None
+        log_table_reference = None
         responses = []
         log = []
 
-        for cluster_name, urls in cluster.items():
-            for url in urls:
-                for strategy in strategies:
-                    requests.append([url, cluster_name, strategy, api_key])
+        if 'bigquery' == database:
+            if 'tablename' in configuration and type(configuration['tablename']) is str:
+                table_name = configuration['tablename']
+            else:
+                raise ConfigurationMissingError('Missing tablename for pagespeed to bigquery')
+
+            dataset_name = None
+
+            if 'dataset' in configuration and type(configuration['dataset']) is str:
+                dataset_name = configuration['dataset']
+
+            table_reference = self.connection.bigquery.table_reference(table_name, dataset_name)
+
+            if 'logTablename' in configuration and type(configuration['logTablename']) is str:
+                log_table_reference = self.connection.bigquery.table_reference(
+                    configuration['logTablename'],
+                    dataset_name
+                )
 
         responses, failed_requests, log = self._process_requests(requests, responses, log)
 
         if 0 < len(failed_requests):
-            responses, failed_requests, log = self._process_requests(failed_requests, responses, log)
+            configuration.pop('cluster', None)
+            configuration.pop('retry_requests', None)
 
-        if 0 < len(failed_requests):
-            for failed_request in failed_requests:
-                print('Failed API request for URL: "{r[0]}", strategy: "{r[2]}"'.format(r=failed_request))
+            if '_id' in configuration:
+                self.mongodb.update_one(
+                    self.COLLECTION_NAME_RETRY,
+                    configuration['_id'],
+                    {'retry_requests': failed_requests}
+                )
+            else:
+                configuration['hash'] = sha256(configuration)
+                existing_configuration = None
+
+                if self.mongodb.has_collection(self.COLLECTION_NAME_RETRY):
+                    existing_configuration = self.mongodb.find_one(
+                        self.COLLECTION_NAME_RETRY,
+                        {'hash': configuration['hash']},
+                        True
+                    )
+
+                if type(existing_configuration) is dict:
+                    self.mongodb.update_one(
+                        self.COLLECTION_NAME_RETRY,
+                        existing_configuration['_id'],
+                        {'retry_requests': failed_requests}
+                    )
+                else:
+                    configuration['retry_requests'] = failed_requests
+                    self.mongodb.insert_document(
+                        self.COLLECTION_NAME_RETRY,
+                        {'retry_requests': failed_requests, **configuration}
+                    )
+        elif '_id' in configuration:
+            self.mongodb.delete_one(self.COLLECTION_NAME_RETRY, configuration['_id'])
 
         if 'bigquery' == database:
             self._process_responses_for_bigquery(responses, table_reference)
@@ -144,7 +187,7 @@ class GooglePagespeed:
             threads = []
 
             for request in requests_chunk:
-                thread = ResultThread(self._process_pagespeed_api, request)
+                thread = ResultThread(self._process_pagespeed_api, request[:4], {'retry_counter': request[4]})
                 thread.start()
                 threads.append(thread)
                 sleep(self.SECONDS_BETWEEN_REQUESTS)
@@ -152,6 +195,7 @@ class GooglePagespeed:
             for thread in threads:
                 thread.join()
                 request = thread.get_arguements()
+                retry_counter = thread.get_data('retry_counter')
 
                 if isinstance(thread.exception, Exception) or type(thread.result) is not dict:
                     status_code = None
@@ -171,7 +215,9 @@ class GooglePagespeed:
                         'message': thread.exception.__str__()
                     })
 
-                    failed_requests.append(request)
+                    if 0 < retry_counter:
+                        retry_counter = retry_counter - 1
+                        failed_requests.append([*request, retry_counter])
                 else:
                     response = thread.result
                     responses.append(response)
