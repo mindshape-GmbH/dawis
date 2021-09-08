@@ -13,6 +13,8 @@ from datetime import datetime, date, timedelta
 from typing import Sequence
 from time import time
 
+import utilities.datetime as datetime_utility
+
 
 class _DataNotAvailableYet(Exception):
     pass
@@ -36,6 +38,7 @@ class SistrixDomain:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
@@ -64,8 +67,11 @@ class SistrixDomain:
         methods = []
         dataset = None
         table_reference = None
-        request_date = datetime.now().date()
         requests = []
+        request_date = datetime_utility.now(self.timezone)
+
+        if 'Europe/Berlin' != self.timezone:
+            request_date = request_date.astimezone(datetime_utility.get_timezone('Europe/Berlin')).date()
 
         if 'apiKey' in configuration and type(configuration['apiKey']) is str:
             api_key = configuration['apiKey']

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from dict_hash import sha256
 from time import time, sleep
 from typing import Sequence
+import utilities.datetime as datetime_utility
 import dateutil
 import re
 
@@ -35,6 +36,7 @@ class GooglePagespeed:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = connection.mongodb
@@ -210,7 +212,7 @@ class GooglePagespeed:
                         'url': request[0],
                         'cluster': request[1],
                         'strategy': request[2],
-                        'date': datetime.utcnow(),
+                        'date': datetime_utility.now(self.timezone),
                         'statusCode': status_code,
                         'message': thread.exception.__str__()
                     })
@@ -226,7 +228,7 @@ class GooglePagespeed:
                         'url': request[0],
                         'cluster': request[1],
                         'strategy': request[2],
-                        'date': datetime.utcnow(),
+                        'date': datetime_utility.now(self.timezone),
                         'statusCode': response['statusCode'],
                         'message': None
                     })

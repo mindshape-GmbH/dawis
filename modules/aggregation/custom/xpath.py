@@ -9,7 +9,7 @@ from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import TableReference, TimePartitioning, TimePartitioningType
 from lxml import etree
 from lxml.html import fromstring as document_from_html, HtmlElement
-from datetime import datetime, timedelta
+from datetime import timedelta
 from os.path import realpath
 from requests import get as get_request, Response
 from requests.exceptions import RequestException
@@ -17,6 +17,7 @@ from time import time
 from typing import Sequence
 from yaml import load as load_yaml
 from yaml import FullLoader
+import utilities.datetime as datetime_utility
 import re
 
 
@@ -28,6 +29,7 @@ class Xpath:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
@@ -131,7 +133,7 @@ class Xpath:
                     'query': query,
                     'name': name,
                     'cluster': None,
-                    'date': datetime.utcnow(),
+                    'date': datetime_utility.now(self.timezone),
                     'elements': self._run_operation_on_elements(
                         self._xpath_query_on_html(
                             self._get_html_from_url(configuration['url']),
@@ -171,7 +173,7 @@ class Xpath:
                             'query': query,
                             'name': name,
                             'cluster': cluster,
-                            'date': datetime.utcnow(),
+                            'date': datetime_utility.now(self.timezone),
                             'elements': self._run_operation_on_elements(
                                 self._xpath_query_on_html(
                                     self._get_html_from_url(url),

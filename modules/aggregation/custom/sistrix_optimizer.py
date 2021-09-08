@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from time import time
 from typing import Sequence
+
+import utilities.datetime as datetime_utility
 import re
 
 
@@ -26,6 +28,7 @@ class SistrixOptimizer:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
@@ -109,10 +112,10 @@ class SistrixOptimizer:
         api_client = SistrixApiClient(api_key)
 
         responses = []
-        request_date = datetime.utcnow().replace(tzinfo=timezone('UTC'))
+        request_date = datetime_utility.now(self.timezone)
 
         request = {
-            'date': request_date.astimezone(timezone('Europe/Berlin')),
+            'date': datetime_utility.now('Europe/Berlin'),
             **parameters
         }
 
@@ -145,8 +148,7 @@ class SistrixOptimizer:
         else:
             self._process_responses_for_mongodb(responses)
 
-    @staticmethod
-    def _process_visibility_response(response: dict, request_date: datetime) -> list:
+    def _process_visibility_response(self, response: dict, request_date: datetime) -> list:
         data = []
 
         for response_data in response['answer'][0]['optimizer.visibility']:
@@ -171,7 +173,7 @@ class SistrixOptimizer:
 
             data.append({
                 'request_date': request_date,
-                'date': datetime.fromisoformat(response_data['date']).astimezone(timezone('UTC')),
+                'date': datetime.fromisoformat(response_data['date']).astimezone(timezone(self.timezone)),
                 'source': source,
                 'type': source_type,
                 'value': float(response_data['value']),

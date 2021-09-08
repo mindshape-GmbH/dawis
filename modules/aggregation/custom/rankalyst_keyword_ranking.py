@@ -7,8 +7,11 @@ from google.cloud.bigquery.job import LoadJobConfig, WriteDisposition
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import TableReference, TimePartitioning, TimePartitioningType
 from datetime import datetime, timedelta
+from pytz import timezone
 from time import time
 from typing import Sequence
+
+import utilities.datetime as datetime_utility
 
 
 class _DataAlreadyExistError(Exception):
@@ -20,6 +23,7 @@ class RankalystKeywordRanking:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
@@ -92,8 +96,7 @@ class RankalystKeywordRanking:
         else:
             self._process_responses_for_mongodb(rankings)
 
-    @staticmethod
-    def _process_keyword_ranking(client: RankalysApiClient, project_id):
+    def _process_keyword_ranking(self, client: RankalysApiClient, project_id):
         rankings = []
 
         for scalar_type_id, scalar_type_label in RankalysApiClient.PARAMETER_LABEL_SCALAR_TYPE.items():
@@ -118,8 +121,12 @@ class RankalystKeywordRanking:
 
                 try:
                     item_date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+                    item_date = item_date.replace(tzinfo=timezone('Europe/Berlin'))
+
+                    if 'Europe/Berlin' != self.timezone:
+                        item_date = item_date.astimezone(timezone(self.timezone))
                 except TypeError:
-                    item_date = datetime.utcnow()
+                    item_date = datetime_utility.now(self.timezone)
 
                 rankings.append({
                     'project_id': int(project_id),
