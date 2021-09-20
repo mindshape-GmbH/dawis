@@ -159,8 +159,11 @@ class GoogleSearchConsole:
                     self.mongodb.delete_one(GoogleSearchConsole.COLLECTION_NAME_RETRY, import_property['_id'])
 
                 print(' !!! already exists')
-            except (_DataNotAvailableYet, UnknownApiNameOrVersion, HttpError):
+            except _DataNotAvailableYet:
                 print(' !!! not available yet')
+            except (UnknownApiNameOrVersion, HttpError) as api_error:
+                print(' !!! ERROR')
+                print(api_error)
 
                 existing_retry = None
 
