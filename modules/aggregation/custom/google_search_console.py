@@ -137,7 +137,7 @@ class GoogleSearchConsole:
                         scopes=['https://www.googleapis.com/auth/webmasters.readonly']
                     )
 
-                api_service = build('webmasters', 'v3', credentials=credentials, cache_discovery=False)
+                api_service = build('searchconsole', 'v1', credentials=credentials, cache_discovery=False)
 
                 self.import_property(
                     api_service,
