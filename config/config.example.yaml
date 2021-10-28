@@ -144,6 +144,33 @@ aggregations:
           views:
             - my_view_id
 
+  bigqueryQueries:
+    cron: '0 5 * * *'
+    module: 'bigquery_queries'
+    settings:
+      configurations:
+        - query: |
+            SELECT column1, column2, date FROM `example-project.dawis.sometable`
+            WHERE date > @date_days_ago
+            ORDER BY date DESC
+          project: 'example-project'
+          credentials: './google-service-credential-file.json'
+          parameters:
+            some_string: 'foo'
+            some_number: 123
+            some_floatnumber: 3.14
+            date_days_ago:
+              dateDaysAgo: 3
+          result:
+            tablename: 'queryResult'
+            dataset: 'Query'
+            writeDisposition: 'truncate'
+            timePartitioning:
+              field: 'Datum'
+              type: 'day'
+            columnMapping:
+              column1: 'columrenamed'
+
   sistrix_domain:
     cron: '0 1 * * *'
     database: 'bigquery'
