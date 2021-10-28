@@ -1,0 +1,7 @@
+{{ title }}
+
+{{ infotext }}
+
+{% for alert in alerts %}{{ alert.date|datetime("%Y-%m-%d %H:%M:%S") }} - {{ alert.message|e }}{% if 10 == loop.index %}
+...{% break %}{% endif %}
+{% endfor %}

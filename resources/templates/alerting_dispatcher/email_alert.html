@@ -1,0 +1,18 @@
+{% extends "base/email.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+<div>
+  <h1>{{ title }}</h1>
+  <p>{{ infotext }}</p>
+  <ul>
+    {% for alert in alerts %}
+      <li>{{ alert.date|datetime("%Y-%m-%d %H:%M:%S") }} - {{ alert.message|e }}</li>
+      {% if 10 == loop.index %}
+        <li>...</li>
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
