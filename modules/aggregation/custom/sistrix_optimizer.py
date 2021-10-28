@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from time import time
 from typing import Sequence
+
+import utilities.datetime as datetime_utility
 import re
 
 
@@ -26,6 +28,7 @@ class SistrixOptimizer:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
         self.mongodb = None
@@ -46,6 +49,8 @@ class SistrixOptimizer:
         parameters = {}
         dataset = None
         table_reference = None
+        use_datetime_api = False
+        use_datetime_request = False
 
         if 'apiKey' in configuration and type(configuration['apiKey']) is str:
             api_key = configuration['apiKey']
@@ -57,17 +62,25 @@ class SistrixOptimizer:
         else:
             raise ConfigurationMissingError('Missing project for configuration')
 
+        if 'useDatetimeApi' in configuration and type(configuration['useDatetimeApi']) is bool:
+            use_datetime_api = configuration['useDatetimeApi']
+
+        if 'useDatetimeRequest' in configuration and type(configuration['useDatetimeRequest']) is bool:
+            use_datetime_request = configuration['useDatetimeRequest']
+
         if 'method' in configuration and type(configuration['method']) is str:
             method = configuration['method']
+            request_date_type = SqlTypeNames.DATETIME if use_datetime_request else SqlTypeNames.DATE
 
             if not method.startswith('optimizer.'):
                 method = 'optimizer.' + configuration['method']
 
             if SistrixApiClient.ENDPOINT_OPTIMIZER_VISIBILITY == method:
+                date_type = SqlTypeNames.DATETIME if use_datetime_api else SqlTypeNames.DATE
                 method = SistrixApiClient.ENDPOINT_OPTIMIZER_VISIBILITY
                 schema = (
-                    SchemaField('request_date', SqlTypeNames.DATETIME, 'REQUIRED'),
-                    SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
+                    SchemaField('request_date', request_date_type, 'REQUIRED'),
+                    SchemaField('date', date_type, 'REQUIRED'),
                     SchemaField('source', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('type', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('value', SqlTypeNames.FLOAT, 'REQUIRED'),
@@ -75,7 +88,7 @@ class SistrixOptimizer:
             elif SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING == method:
                 method = SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING
                 schema = (
-                    SchemaField('request_date', SqlTypeNames.DATETIME, 'REQUIRED'),
+                    SchemaField('request_date', request_date_type, 'REQUIRED'),
                     SchemaField('keyword', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('position', SqlTypeNames.INTEGER, 'REQUIRED'),
                     SchemaField('positionOverflow', SqlTypeNames.BOOL, 'REQUIRED'),
@@ -109,10 +122,10 @@ class SistrixOptimizer:
         api_client = SistrixApiClient(api_key)
 
         responses = []
-        request_date = datetime.utcnow().replace(tzinfo=timezone('UTC'))
+        request_date = datetime_utility.now(self.timezone)
 
         request = {
-            'date': request_date.astimezone(timezone('Europe/Berlin')),
+            'date': datetime_utility.now('Europe/Berlin').date(),
             **parameters
         }
 
@@ -141,12 +154,17 @@ class SistrixOptimizer:
                 print('API Error: ' + error.message)
 
         if 'bigquery' == self.module_configuration.database:
-            self._process_responses_for_bigquery(responses, schema, table_reference)
+            self._process_responses_for_bigquery(
+                responses,
+                schema,
+                table_reference,
+                use_datetime_request,
+                use_datetime_api
+            )
         else:
             self._process_responses_for_mongodb(responses)
 
-    @staticmethod
-    def _process_visibility_response(response: dict, request_date: datetime) -> list:
+    def _process_visibility_response(self, response: dict, request_date: datetime) -> list:
         data = []
 
         for response_data in response['answer'][0]['optimizer.visibility']:
@@ -171,7 +189,7 @@ class SistrixOptimizer:
 
             data.append({
                 'request_date': request_date,
-                'date': datetime.fromisoformat(response_data['date']).astimezone(timezone('UTC')),
+                'date': datetime.fromisoformat(response_data['date']).astimezone(timezone(self.timezone)),
                 'source': source,
                 'type': source_type,
                 'value': float(response_data['value']),
@@ -179,7 +197,8 @@ class SistrixOptimizer:
 
         return data
 
-    def _process_ranking_response(self, response: dict, request_date: datetime) -> list:
+    @staticmethod
+    def _process_ranking_response(response: dict, request_date: datetime) -> list:
         data = []
 
         for response_data in response['answer'][0]['optimizer.rankings']:
@@ -215,7 +234,9 @@ class SistrixOptimizer:
         self,
         responses: Sequence[dict],
         schema: Sequence[SchemaField],
-        table_reference: TableReference
+        table_reference: TableReference,
+        use_datetime_request: bool,
+        use_datetime_api: bool,
     ):
         job_config = LoadJobConfig()
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
@@ -224,9 +245,11 @@ class SistrixOptimizer:
 
         for response in responses:
             if 'request_date' in response:
-                response['request_date'] = response['request_date'].strftime('%Y-%m-%dT%H:%M:%S.%f')
+                date_format = '%Y-%m-%dT%H:%M:%S.%f' if use_datetime_request else '%Y-%m-%d'
+                response['request_date'] = response['request_date'].strftime(date_format)
             if 'date' in response:
-                response['date'] = response['date'].strftime('%Y-%m-%dT%H:%M:%S.%f')
+                date_format = '%Y-%m-%dT%H:%M:%S.%f' if use_datetime_api else '%Y-%m-%d'
+                response['date'] = response['date'].strftime(date_format)
 
         load_job = self.bigquery.client.load_table_from_json(responses, table_reference, job_config=job_config)
         load_job.result()

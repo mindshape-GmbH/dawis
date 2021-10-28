@@ -168,10 +168,16 @@ class ConfigurationLoader:
             if 'orm' in plain_configuration[key]:
                 configuration_mysql = ConfigurationLoader._process_configuration_ormdatabase(plain_configuration)
 
+            if 'timezone' in plain_configuration[key]:
+                timezone = plain_configuration[key]['timezone']
+            else:
+                timezone = 'UTC'
+
             return ConfigurationDatabases(
                 ConfigurationLoader._process_configuration_mongodb(plain_configuration),
                 configuration_mysql,
-                configuration_bigquery
+                configuration_bigquery,
+                timezone
             )
         else:
             raise ConfigurationMissingError(key)

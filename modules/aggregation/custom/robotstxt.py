@@ -1,7 +1,8 @@
 from database.connection import Connection
 from utilities.configuration import Configuration
 from utilities.url import URL
-from datetime import datetime
+
+import utilities.datetime as datetime_utility
 import requests
 
 
@@ -10,6 +11,7 @@ class Robotstxt:
 
     def __init__(self, configuration: Configuration, configuration_key: str, connection: Connection):
         self.configuration = configuration
+        self.timezone = configuration.databases.timezone
         self.module_configuration = configuration.aggregations.get_custom_configuration_aggregation(configuration_key)
         self.connection = connection
 
@@ -56,5 +58,5 @@ class Robotstxt:
             'status_code': status_code,
             'body': body,
             'headers': headers,
-            'date': datetime.now()
+            'date': datetime_utility.now(self.timezone)
         }

@@ -87,8 +87,10 @@ class ConfigurationDatabases:
             self,
             mongodb: ConfigurationMongoDB,
             orm: ConfigurationORM = None,
-            bigquery: ConfigurationBigQuery = None
+            bigquery: ConfigurationBigQuery = None,
+            timezone: str = 'UTC',
     ):
+        self.timezone = timezone
         self.mongodb = mongodb
         self.orm = orm
         self.bigquery = bigquery
