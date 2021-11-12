@@ -378,6 +378,8 @@ class GoogleAnalytics:
                     sleep(10)
                 except _DataAlreadyExistError:
                     print(' - EXISTS')
+                except _DataNotAvailableYet:
+                    print(' - NOT AVAILABLE')
 
     def _import_view(
             self,
@@ -451,8 +453,11 @@ class GoogleAnalytics:
 
             data = []
 
-            for row in response['reports'][0]['data']['rows']:
-                data.append([y for x in [row['dimensions'], row['metrics'][0]['values']] for y in x])
+            if 'rows' in response['reports'][0]['data'] and 0 < len(response['reports'][0]['data']['rows']):
+                for row in response['reports'][0]['data']['rows']:
+                    data.append([y for x in [row['dimensions'], row['metrics'][0]['values']] for y in x])
+            else:
+                raise _DataNotAvailableYet()
 
             dataframe = DataFrame(data, columns=column_headers)
 
