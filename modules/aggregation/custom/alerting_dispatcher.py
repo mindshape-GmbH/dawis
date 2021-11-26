@@ -1,12 +1,16 @@
 from database.connection import Connection
-from service.alerting import Alert, AlertQueue
+from service.api.wrike import Client as WrikeApiClient
+from service.alerting import AlertQueue
 from service.email import Dispatcher, DispatcherException
 from utilities.configuration import Configuration
+from utilities import datetime
 from utilities.exceptions import ConfigurationMissingError, ConfigurationInvalidError
 from datetime import timedelta
 from os import linesep
 from tempfile import NamedTemporaryFile
 from time import time
+
+import json
 
 
 class _DataAlreadyExistError(Exception):
@@ -48,6 +52,8 @@ class AlertingDispatcher:
 
         if 'email' == alert_type:
             self._process_email_configuration(configuration)
+        elif 'wrike' == alert_type:
+            self._process_wrike_configuration(configuration)
         else:
             raise ConfigurationInvalidError('Invalid alert type "{}"'.format(alert_type))
 
@@ -171,3 +177,63 @@ class AlertingDispatcher:
                 except (ConnectionError, DispatcherException) as error:
                     self.alert_queue.add_alerts(alerts)
                     raise ConfigurationInvalidError(str(error))
+
+    def _process_wrike_configuration(self, configuration):
+        api_host = WrikeApiClient.API_HOST_GLOBAL
+        responsible_emails = []
+        responsible_contacts = []
+        task_title = 'dawis Alert'
+
+        if 'groups' in configuration and type(configuration['groups']) is list:
+            groups = configuration['groups']
+        else:
+            raise ConfigurationMissingError('Missing groups to fetch alerts for')
+
+        alerts = self.alert_queue.fetch_alerts(groups)
+
+        if 'taskTitle' in configuration and type(configuration['taskTitle']) is str:
+            task_title = configuration['taskTitle']
+
+        if 'apiHost' in configuration and type(configuration['apiHost']) is str:
+            api_host = configuration['apiHost']
+
+        if 'responsible' in configuration and type(configuration['responsible']) is list:
+            responsible_emails = configuration['responsible']
+
+        if 'apiToken' in configuration and type(configuration['apiToken']) is str:
+            api_token = configuration['apiToken']
+        else:
+            raise ConfigurationMissingError('Missing api token for wrike API')
+
+        api_client = WrikeApiClient(api_token, api_host)
+
+        if 'folderSharedId' in configuration and type(configuration['folderSharedId']) is str:
+            folder = api_client.get_folder(share_id=configuration['folderSharedId'])
+        elif 'folderId' in configuration and type(configuration['folderId']) is str:
+            folder = api_client.get_folder(folder_id=configuration['folderId'])
+        else:
+            raise ConfigurationMissingError('Missing folder api- or share id for task')
+
+        for email in responsible_emails:
+            responsible_contacts.append(
+                api_client.get_contact(email)
+            )
+
+        if type(folder) is not dict:
+            raise ConfigurationInvalidError('The wrike folder does not exist')
+
+        for alert in alerts:
+            description = alert.message.replace('\n', '<br/>')
+            description += '<br/><br/>'
+            description += json.dumps(alert.data, indent=2).replace('\n', '<br/>')
+
+            task = api_client.create_task(
+                folder['id'],
+                task_title,
+                description,
+                [responsible_contact['id'] for responsible_contact in responsible_contacts],
+                date_start=datetime.now().date()
+            )
+
+            if type(task) is not dict:
+                raise ConfigurationInvalidError('Could not create task, please check configuration')

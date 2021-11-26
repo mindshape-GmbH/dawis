@@ -11,6 +11,14 @@ class Validator:
             r'localhost|'  # localhost...
             r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
             r'(?::\d+)?'  # optional port
-            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+            r'(?:/?|[/?]\S+)$',
+            re.IGNORECASE
+        )
 
         return re.match(regex, url) is not None
+
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        regex = re.compile(r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)', re.IGNORECASE)
+
+        return re.match(regex, email) is not None
