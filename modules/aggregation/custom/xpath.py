@@ -128,21 +128,21 @@ class Xpath:
                 if not Validator.validate_url(configuration['url']):
                     raise ConfigurationInvalidError('Invalid url in xpath configuartion')
 
-                data.append({
-                    'url': configuration['url'],
-                    'query': query,
-                    'name': name,
-                    'cluster': None,
-                    'date': datetime_utility.now(self.timezone),
-                    'elements': self._run_operation_on_elements(
-                        self._xpath_query_on_html(
-                            self._get_html_from_url(configuration['url']),
-                            query
-                        ),
-                        operation,
-                        operation_options
-                    )
-                })
+                html = self._get_html_from_url(configuration['url'])
+
+                if type(html) is str:
+                    data.append({
+                        'url': configuration['url'],
+                        'query': query,
+                        'name': name,
+                        'cluster': None,
+                        'date': datetime_utility.now(self.timezone),
+                        'elements': self._run_operation_on_elements(
+                            self._xpath_query_on_html(html, query),
+                            operation,
+                            operation_options
+                        )
+                    })
 
             elif 'cluster' in configuration:
                 clusters_configuration = None
@@ -168,21 +168,21 @@ class Xpath:
                         elif not Validator.validate_url(url):
                             raise ConfigurationInvalidError('Invalid url')
 
-                        data.append({
-                            'url': url,
-                            'query': query,
-                            'name': name,
-                            'cluster': cluster,
-                            'date': datetime_utility.now(self.timezone),
-                            'elements': self._run_operation_on_elements(
-                                self._xpath_query_on_html(
-                                    self._get_html_from_url(url),
-                                    query
-                                ),
-                                operation,
-                                operation_options
-                            )
-                        })
+                        html = self._get_html_from_url(url)
+
+                        if type(html) is str:
+                            data.append({
+                                'url': url,
+                                'query': query,
+                                'name': name,
+                                'cluster': cluster,
+                                'date': datetime_utility.now(self.timezone),
+                                'elements': self._run_operation_on_elements(
+                                    self._xpath_query_on_html(html, query),
+                                    operation,
+                                    operation_options
+                                )
+                            })
             else:
                 raise ConfigurationMissingError('Missing url parameter for xpath configuration')
 
