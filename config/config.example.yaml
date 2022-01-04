@@ -202,17 +202,6 @@ aggregations:
           dataset: 'Sistrix'
           table: 'domain'
 
-  rankalyst_keyword_ranking:
-    cron: '30 3 * * *'
-    database: 'bigquery'
-    settings:
-      configurations:
-        - apiKey: 'ABCDEFGHIJK123456789'
-          projectId: '1234'
-          username: 'user'
-          dataset: 'Rankalyst'
-          tablename: 'ranking'
-
   xpath:
     cron: '0 3 * * *'
     database: 'bigquery'
