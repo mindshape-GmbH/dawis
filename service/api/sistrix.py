@@ -1,5 +1,6 @@
 from inspect import getmembers
 from datetime import date, datetime
+from urllib.parse import quote
 import requests
 
 
@@ -88,7 +89,7 @@ class Client:
                 if type(value) is not str:
                     value = str(value)
 
-                request_url += '&' + parameter + '=' + value
+                request_url += '&' + parameter + '=' + quote(value)
 
         response = requests.get(request_url)
 
