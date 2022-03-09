@@ -32,7 +32,7 @@ class Responseheader:
                         HtmlParser.COLLECTION_NAME,
                         {
                             'urlset': urlset_name,
-                            'processed_htmlheadings': {'$exists': False}
+                            'processed_responseheader': {'$exists': False}
                         }
                     )
 
