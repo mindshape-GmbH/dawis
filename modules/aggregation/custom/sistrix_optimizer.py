@@ -47,6 +47,7 @@ class SistrixOptimizer:
 
     def _process_configuration(self, configuration: dict, database: str):
         parameters = {}
+        add_parameters_to_table = []
         dataset = None
         table_reference = None
         use_datetime_api = False
@@ -68,6 +69,9 @@ class SistrixOptimizer:
         if 'useDatetimeRequest' in configuration and type(configuration['useDatetimeRequest']) is bool:
             use_datetime_request = configuration['useDatetimeRequest']
 
+        if 'addParameterToTable' in configuration and type(configuration['addParameterToTable']) is list:
+            add_parameters_to_table = configuration['addParameterToTable']
+
         if 'method' in configuration and type(configuration['method']) is str:
             method = configuration['method']
             request_date_type = SqlTypeNames.DATETIME if use_datetime_request else SqlTypeNames.DATE
@@ -83,8 +87,15 @@ class SistrixOptimizer:
                     SchemaField('date', date_type, 'REQUIRED'),
                     SchemaField('source', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('type', SqlTypeNames.STRING, 'REQUIRED'),
-                    SchemaField('value', SqlTypeNames.FLOAT, 'REQUIRED'),
+                    SchemaField('value', SqlTypeNames.FLOAT, 'REQUIRED')
                 )
+
+                if 'tag' in add_parameters_to_table:
+                    schema = schema + (SchemaField('tag', SqlTypeNames.STRING),)
+
+                if 'competitors' in add_parameters_to_table:
+                    schema = schema + (SchemaField('competitors', SqlTypeNames.BOOL, 'REQUIRED'),)
+
             elif SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING == method:
                 method = SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING
                 schema = (
@@ -137,7 +148,9 @@ class SistrixOptimizer:
                     responses.extend(
                         self._process_visibility_response(
                             api_client.request(method, request),
-                            request_date
+                            request_date,
+                            parameters,
+                            add_parameters_to_table
                         )
                     )
                 elif SistrixApiClient.ENDPOINT_OPTIMIZER_RANKING == method:
@@ -164,7 +177,13 @@ class SistrixOptimizer:
         else:
             self._process_responses_for_mongodb(responses)
 
-    def _process_visibility_response(self, response: dict, request_date: datetime) -> list:
+    def _process_visibility_response(
+        self,
+        response: dict,
+        request_date: datetime,
+        request_parameters: dict,
+        add_parameters_to_table: list
+    ) -> list:
         data = []
 
         for response_data in response['answer'][0]['optimizer.visibility']:
@@ -187,13 +206,24 @@ class SistrixOptimizer:
             if type(source) is not str:
                 raise SistrixApiError('Missing source for response data')
 
-            data.append({
+            data_item = {
                 'request_date': request_date,
                 'date': datetime.fromisoformat(response_data['date']).astimezone(timezone(self.timezone)),
                 'source': source,
                 'type': source_type,
                 'value': float(response_data['value']),
-            })
+            }
+
+            if 'tag' in add_parameters_to_table and 'tag' in response_data:
+                data_item['tag'] = response_data['tag']
+
+            if 'competitors' in add_parameters_to_table:
+                if 'competitors' in request_parameters:
+                    data_item['competitors'] = request_parameters['competitors']
+                else:
+                    data_item['competitors'] = False
+
+            data.append(data_item)
 
         return data
 
