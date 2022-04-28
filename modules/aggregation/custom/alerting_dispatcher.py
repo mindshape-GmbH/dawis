@@ -183,6 +183,9 @@ class AlertingDispatcher:
         responsible_emails = []
         responsible_contacts = []
         task_title = 'dawis Alert'
+        task = None
+        add_alert_data = True
+        summarise_alerts = False
 
         if 'groups' in configuration and type(configuration['groups']) is list:
             groups = configuration['groups']
@@ -190,6 +193,15 @@ class AlertingDispatcher:
             raise ConfigurationMissingError('Missing groups to fetch alerts for')
 
         alerts = self.alert_queue.fetch_alerts(groups)
+
+        if 0 == len(alerts):
+            return
+
+        if 'addAlertData' in configuration and type(configuration['addAlertData']) is bool:
+            add_alert_data = configuration['addAlertData']
+
+        if 'summariseAlerts' in configuration and type(configuration['summariseAlerts']) is bool:
+            summarise_alerts = configuration['summariseAlerts']
 
         if 'taskTitle' in configuration and type(configuration['taskTitle']) is str:
             task_title = configuration['taskTitle']
@@ -222,10 +234,16 @@ class AlertingDispatcher:
         if type(folder) is not dict:
             raise ConfigurationInvalidError('The wrike folder does not exist')
 
-        for alert in alerts:
-            description = alert.message.replace('\n', '<br/>')
-            description += '<br/><br/>'
-            description += json.dumps(alert.data, indent=2).replace('\n', '<br/>')
+        if summarise_alerts:
+            description = ''
+
+            for alert in alerts:
+                description += alert.message.replace('\n', '<br/>')
+                description += '<br/><br/>'
+
+                if add_alert_data:
+                    description += json.dumps(alert.data, indent=2).replace('\n', '<br/>')
+                    description += '<br/><br/>'
 
             task = api_client.create_task(
                 folder['id'],
@@ -234,6 +252,22 @@ class AlertingDispatcher:
                 [responsible_contact['id'] for responsible_contact in responsible_contacts],
                 date_start=datetime.now().date()
             )
+        else:
+            for alert in alerts:
+                description = alert.message.replace('\n', '<br/>')
+                description += '<br/><br/>'
 
-            if type(task) is not dict:
-                raise ConfigurationInvalidError('Could not create task, please check configuration')
+                if add_alert_data:
+                    description += json.dumps(alert.data, indent=2).replace('\n', '<br/>')
+                    description += '<br/><br/>'
+
+                task = api_client.create_task(
+                    folder['id'],
+                    task_title,
+                    description,
+                    [responsible_contact['id'] for responsible_contact in responsible_contacts],
+                    date_start=datetime.now().date()
+                )
+
+        if type(task) is not dict:
+            raise ConfigurationInvalidError('Could not create task, please check configuration')
