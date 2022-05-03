@@ -268,11 +268,14 @@ class GoogleSearchConsole:
 
                 if 'rows' not in response:
                     if 0 == iteration_count and (len(search_types) - 1) == search_types.index(search_type):
-                        cache_entry = self.mongodb.find_one(
-                            GoogleSearchConsole.COLLECTION_NAME_CACHE,
-                            {'hash': cache_hash},
-                            True
-                        )
+                        cache_entry = None
+
+                        if self.mongodb.has_collection(GoogleSearchConsole.COLLECTION_NAME_CACHE):
+                            cache_entry = self.mongodb.find_one(
+                                GoogleSearchConsole.COLLECTION_NAME_CACHE,
+                                {'hash': cache_hash},
+                                True
+                            )
 
                         if cache_entry is None:
                             raise _DataNotAvailableYet()
