@@ -303,7 +303,7 @@ class GooglePagespeed:
                 SchemaField('offscreenImages', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('usesOptimizedImages', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('usesResponsiveImages', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('renderBlockingResources', SqlTypeNames.FLOAT, 'REQUIRED'),
+                SchemaField('renderBlockingResources', SqlTypeNames.FLOAT),
                 SchemaField('bootupTime', SqlTypeNames.FLOAT, 'REQUIRED'),
                 SchemaField('mainthreadWorkBreakdown', SqlTypeNames.FLOAT, 'REQUIRED'),
             )),
@@ -435,7 +435,6 @@ class GooglePagespeed:
             'offscreenImages',
             'usesOptimizedImages',
             'usesResponsiveImages',
-            'renderBlockingResources',
             'bootupTime',
             'mainthreadWorkBreakdown',
         ]:
