@@ -207,7 +207,8 @@ class GoogleSearchConsole:
         previous_dates = {}
         cache_hash = sha256({'property': gsc_property, 'dimensions': dimensions, 'date': datetime.now().isoformat()})
 
-        print(' - Property: "{:s}"'.format(gsc_property), end='')
+        print(' - Property: "{:s}" - "{:s}"'.format(gsc_property, table_name))
+        print('   + {:%Y-%m-%d} -> {:%Y-%m-%d}'.format(request_date, request_date), end='')
 
         for previous_data_item in previous_data:
             if 'year' == previous_data_item:
@@ -243,8 +244,6 @@ class GoogleSearchConsole:
             raise _DataAlreadyExistError()
         elif 'mongodb' == database and self._mongodb_check_has_existing_data(gsc_property, request_date):
             raise _DataAlreadyExistError()
-
-        print('\n   + {:%Y-%m-%d} -> {:%Y-%m-%d}'.format(request_date, request_date), end='')
 
         timer_base = time()
 
