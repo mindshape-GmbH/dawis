@@ -15,5 +15,6 @@ def now(date_timezone: str = 'UTC') -> datetime:
 def get_timezone(timezone_string: str) -> timezone:
     return timezone(timezone_string)
 
+
 def current_timezone() -> str:
     return str(datetime.now(datetime_timezone(timedelta())).astimezone().tzinfo)
