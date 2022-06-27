@@ -32,19 +32,26 @@ class Client:
             raise ApiError('The method "{method}" does not exist'.format(method=method))
 
         request_url = self.API_URL.format(host=self._api_host) + method_url
+        request_data = {}
 
         if type(parameters) is dict:
-            request_url += '?' + '&'.join([
-                key + '=' + quote(json.dumps(value) if type(value) in (dict, list) else value)
-                for key, value in parameters.items()
-            ])
+            if method.lower() == 'post':
+                request_data = parameters
+            else:
+                request_url += '?' + '&'.join([
+                    key + '=' + quote(json.dumps(value) if type(value) in (dict, list) else value)
+                    for key, value in parameters.items()
+                ])
 
         headers = {
             'Accept': 'application/json',
             'Authorization': 'bearer {token}'.format(token=self._api_token)
         }
 
-        response = requests.request(method, request_url, headers=headers)
+        if method.lower() == 'post':
+            response = requests.request(method, request_url, json=request_data, headers=headers)
+        else:
+            response = requests.request(method, request_url, headers=headers)
 
         if 200 != response.status_code:
             raise ApiError(
