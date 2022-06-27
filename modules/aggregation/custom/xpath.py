@@ -292,7 +292,7 @@ class Xpath:
                 for child in element.xpath('./*'):
                     content += etree.tostring(child, pretty_print=True).decode('utf-8')
 
-                if '' == content and not element.text.isspace():
+                if '' == content and type(element.text) is str and not element.text.isspace():
                     content = element.text
             elif isinstance(element, str):
                 content = str(element)
