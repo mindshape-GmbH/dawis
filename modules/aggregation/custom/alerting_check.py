@@ -178,28 +178,22 @@ class AlertingCheck:
                 })
 
             for result_item in result_data:
-                result_check = True
-
                 for check_per_line in checks_per_line:
-                    if parse_comparison(check_per_line, result_item):
-                        result_check = False
-                        break
+                    result_check = parse_comparison(check_per_line, result_item)
 
-                if type(log_configuration) is dict:
-                    log_items.append({
-                        'date': datetime.utcnow(),
-                        'name': log_configuration['name'],
-                        'message': log_configuration['message'].format(**result_item),
-                        'success': result_check,
-                    })
+                    if type(log_configuration) is dict:
+                        log_items.append({
+                            'date': datetime.utcnow(),
+                            'name': log_configuration['name'],
+                            'message': log_configuration['message'].format(**result_item),
+                            'success': result_check,
+                        })
 
-                alert_message = message.format(**result_item)
-
-                if result_check is False and negate is False or result_check is True and negate is False:
-                    [
-                        alerts.append(Alert(datetime.utcnow(), group, alert_message, result_item))
-                        for group in groups
-                    ]
+                    if result_check is False and negate is True or result_check is True and negate is False:
+                        [
+                            alerts.append(Alert(datetime.utcnow(), group, message.format(**result_item), result_item))
+                            for group in groups
+                        ]
         else:
             alert_data = {
                 'results': result_data,
