@@ -204,21 +204,25 @@ class AlertingCheck:
 
             if 0 < len(result_data) and negate is False:
                 [alerts.append(Alert(datetime.utcnow(), group, alert_message, alert_data)) for group in groups]
-                log_items.append({
-                    'date': datetime.utcnow(),
-                    'name': log_configuration['name'],
-                    'message': log_configuration['message'].format(**alert_data),
-                    'success': False,
-                })
+
+                if type(log_configuration) is dict:
+                    log_items.append({
+                        'date': datetime.utcnow(),
+                        'name': log_configuration['name'],
+                        'message': log_configuration['message'].format(**alert_data),
+                        'success': False,
+                    })
             elif 0 == len(result_data) and negate is True:
                 [alerts.append(Alert(datetime.utcnow(), group, message)) for group in groups]
-                log_items.append({
-                    'date': datetime.utcnow(),
-                    'name': log_configuration['name'],
-                    'message': log_configuration['message'],
-                    'success': False,
-                })
-            else:
+
+                if type(log_configuration) is dict:
+                    log_items.append({
+                        'date': datetime.utcnow(),
+                        'name': log_configuration['name'],
+                        'message': log_configuration['message'],
+                        'success': False,
+                    })
+            elif type(log_configuration) is dict:
                 log_items.append({
                     'date': datetime.utcnow(),
                     'name': log_configuration['name'],
@@ -226,5 +230,7 @@ class AlertingCheck:
                     'success': True,
                 })
 
-        self._log_to_bigquery(log_configuration, log_items)
+        if type(log_configuration) is dict:
+            self._log_to_bigquery(log_configuration, log_items)
+
         self._alert_queue.add_alerts(alerts)
