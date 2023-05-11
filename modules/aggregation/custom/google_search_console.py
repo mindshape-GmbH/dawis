@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from time import time
 from calendar import monthrange
+from socket import timeout
 
 
 class _DataAlreadyExistError(Exception):
@@ -161,7 +162,7 @@ class GoogleSearchConsole:
                 print(' !!! already exists')
             except _DataNotAvailableYet:
                 print(' !!! not available yet')
-            except (UnknownApiNameOrVersion, HttpError) as api_error:
+            except (UnknownApiNameOrVersion, HttpError, timeout) as api_error:
                 print(' !!! ERROR')
                 print(api_error)
 
