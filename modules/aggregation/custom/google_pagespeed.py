@@ -261,51 +261,55 @@ class GooglePagespeed:
     def _process_responses_for_bigquery(self, data: Sequence[dict], table_reference: TableReference):
         job_config = LoadJobConfig()
         job_config.write_disposition = WriteDisposition.WRITE_APPEND
-        job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field='date')
+        job_config.time_partitioning = TimePartitioning(type_=TimePartitioningType.DAY, field=SqlTypeNames.DATE)
 
         loading_experience_schema_fields = (
-            SchemaField('cls', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('clsGood', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('clsMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('clsBad', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('lcp', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('lcpGood', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('lcpMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('lcpBad', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fcp', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('fcpGood', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fcpMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fcpBad', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fid', SqlTypeNames.INTEGER, 'REQUIRED'),
-            SchemaField('fidGood', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fidMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
-            SchemaField('fidBad', SqlTypeNames.FLOAT, 'REQUIRED'),
+            SchemaField('cls', SqlTypeNames.INTEGER),
+            SchemaField('clsGood', SqlTypeNames.FLOAT),
+            SchemaField('clsMedium', SqlTypeNames.FLOAT),
+            SchemaField('clsBad', SqlTypeNames.FLOAT),
+            SchemaField('lcp', SqlTypeNames.INTEGER),
+            SchemaField('lcpGood', SqlTypeNames.FLOAT),
+            SchemaField('lcpMedium', SqlTypeNames.FLOAT),
+            SchemaField('lcpBad', SqlTypeNames.FLOAT),
+            SchemaField('fcp', SqlTypeNames.INTEGER),
+            SchemaField('fcpGood', SqlTypeNames.FLOAT),
+            SchemaField('fcpMedium', SqlTypeNames.FLOAT),
+            SchemaField('fcpBad', SqlTypeNames.FLOAT),
+            SchemaField('fid', SqlTypeNames.INTEGER),
+            SchemaField('fidGood', SqlTypeNames.FLOAT),
+            SchemaField('fidMedium', SqlTypeNames.FLOAT),
+            SchemaField('fidBad', SqlTypeNames.FLOAT),
+            SchemaField('inp', SqlTypeNames.FLOAT),
+            SchemaField('inpGood', SqlTypeNames.FLOAT),
+            SchemaField('inpMedium', SqlTypeNames.FLOAT),
+            SchemaField('inpBad', SqlTypeNames.FLOAT),
         )
 
         job_config.schema = (
             SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('strategy', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('date', SqlTypeNames.DATETIME, 'REQUIRED'),
-            SchemaField('statusCode', SqlTypeNames.INTEGER, 'REQUIRED'),
+            SchemaField('statusCode', SqlTypeNames.INTEGER),
             SchemaField('cluster', SqlTypeNames.STRING, 'REQUIRED'),
             SchemaField('labdata', SqlTypeNames.RECORD, 'REQUIRED', fields=(
-                SchemaField('cls', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('lcp', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('fcp', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('tbt', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('mpfid', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('ttfb', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('performanceScore', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('serverResponseTime', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('usesTextCompression', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('usesLongCacheTtl', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('domSize', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('offscreenImages', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('usesOptimizedImages', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('usesResponsiveImages', SqlTypeNames.FLOAT, 'REQUIRED'),
+                SchemaField('cls', SqlTypeNames.FLOAT),
+                SchemaField('lcp', SqlTypeNames.FLOAT),
+                SchemaField('fcp', SqlTypeNames.FLOAT),
+                SchemaField('tbt', SqlTypeNames.FLOAT),
+                SchemaField('mpfid', SqlTypeNames.FLOAT),
+                SchemaField('ttfb', SqlTypeNames.FLOAT),
+                SchemaField('performanceScore', SqlTypeNames.FLOAT),
+                SchemaField('serverResponseTime', SqlTypeNames.FLOAT),
+                SchemaField('usesTextCompression', SqlTypeNames.FLOAT),
+                SchemaField('usesLongCacheTtl', SqlTypeNames.FLOAT),
+                SchemaField('domSize', SqlTypeNames.FLOAT),
+                SchemaField('offscreenImages', SqlTypeNames.FLOAT),
+                SchemaField('usesOptimizedImages', SqlTypeNames.FLOAT),
+                SchemaField('usesResponsiveImages', SqlTypeNames.FLOAT),
                 SchemaField('renderBlockingResources', SqlTypeNames.FLOAT),
-                SchemaField('bootupTime', SqlTypeNames.FLOAT, 'REQUIRED'),
-                SchemaField('mainthreadWorkBreakdown', SqlTypeNames.FLOAT, 'REQUIRED'),
+                SchemaField('bootupTime', SqlTypeNames.FLOAT),
+                SchemaField('mainthreadWorkBreakdown', SqlTypeNames.FLOAT),
             )),
             SchemaField(
                 'originLoadingExperience',
@@ -343,28 +347,14 @@ class GooglePagespeed:
         load_job.result()
 
     def _process_response(self, response: dict, url: str, cluster: str, strategy: str) -> dict:
-        loading_experience_dummy = lambda x: {
-            'cls': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['percentile'],
-            'clsGood': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['distributions'][0]['proportion'],
-            'clsMedium': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['distributions'][1]['proportion'],
-            'clsBad': response[x]['metrics']['CUMULATIVE_LAYOUT_SHIFT_SCORE']['distributions'][2]['proportion'],
-            'lcp': response[x]['metrics']['LARGEST_CONTENTFUL_PAINT_MS']['percentile'],
-            'lcpGood': response[x]['metrics']['LARGEST_CONTENTFUL_PAINT_MS']['distributions'][0]['proportion'],
-            'lcpMedium': response[x]['metrics']['LARGEST_CONTENTFUL_PAINT_MS']['distributions'][1]['proportion'],
-            'lcpBad': response[x]['metrics']['LARGEST_CONTENTFUL_PAINT_MS']['distributions'][2]['proportion'],
-            'fcp': response['originLoadingExperience']['metrics']['FIRST_CONTENTFUL_PAINT_MS']['percentile'],
-            'fcpGood': response[x]['metrics']['FIRST_CONTENTFUL_PAINT_MS']['distributions'][0]['proportion'],
-            'fcpMedium': response[x]['metrics']['FIRST_CONTENTFUL_PAINT_MS']['distributions'][1]['proportion'],
-            'fcpBad': response[x]['metrics']['FIRST_CONTENTFUL_PAINT_MS']['distributions'][2]['proportion'],
-            'fid': response['originLoadingExperience']['metrics']['FIRST_INPUT_DELAY_MS']['percentile'],
-            'fidGood': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][0]['proportion'],
-            'fidMedium': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][1]['proportion'],
-            'fidBad': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][2]['proportion'],
-        }
+        lighthouse_audits = response.get('lighthouseResult', {}).get('audits', {})
+        lighthouse_categories = response.get('lighthouseResult', {}).get('categories', {})
+        network_items = lighthouse_audits.get('network-requests', {}).get('details', {}).get('items', [])
 
-        status_code = int(
-            response['lighthouseResult']['audits']['network-requests']['details']['items'][0]['statusCode']
-        )
+        try:
+            status_code = network_items[0].get('statusCode', None)
+        except IndexError:
+            status_code = None
 
         data = {
             'url': url,
@@ -373,25 +363,25 @@ class GooglePagespeed:
             'date': dateutil.parser.parse(response['analysisUTCTimestamp']),
             'cluster': cluster,
             'labdata': {
-                'cls': response['lighthouseResult']['audits']['cumulative-layout-shift']['numericValue'],
-                'lcp': response['lighthouseResult']['audits']['largest-contentful-paint']['numericValue'],
-                'fcp': response['lighthouseResult']['audits']['first-contentful-paint']['numericValue'],
-                'tbt': response['lighthouseResult']['audits']['total-blocking-time']['numericValue'],
-                'mpfid': response['lighthouseResult']['audits']['max-potential-fid']['numericValue'],
-                'ttfb': response['lighthouseResult']['audits']['server-response-time']['numericValue'],
-                'performanceScore': response['lighthouseResult']['categories']['performance']['score'],
-                'serverResponseTime': response['lighthouseResult']['audits']['server-response-time']['score'],
-                'usesTextCompression': response['lighthouseResult']['audits']['uses-text-compression']['score'],
-                'usesLongCacheTtl': response['lighthouseResult']['audits']['uses-long-cache-ttl']['score'],
-                'domSize': response['lighthouseResult']['audits']['dom-size']['score'],
-                'offscreenImages': response['lighthouseResult']['audits']['offscreen-images']['score'],
-                'usesOptimizedImages': response['lighthouseResult']['audits']['uses-optimized-images']['score'],
-                'usesResponsiveImages': response['lighthouseResult']['audits']['uses-responsive-images']['score'],
-                'renderBlockingResources': response['lighthouseResult']['audits']['render-blocking-resources']['score'],
-                'bootupTime': response['lighthouseResult']['audits']['bootup-time']['score'],
-                'mainthreadWorkBreakdown': response['lighthouseResult']['audits']['mainthread-work-breakdown']['score'],
+                'cls': lighthouse_audits.get('cumulative-layout-shift', {}).get('numericValue', None),
+                'lcp': lighthouse_audits.get('largest-contentful-paint', {}).get('numericValue', None),
+                'fcp': lighthouse_audits.get('first-contentful-paint', {}).get('numericValue', None),
+                'tbt': lighthouse_audits.get('total-blocking-time', {}).get('numericValue', None),
+                'mpfid': lighthouse_audits.get('max-potential-fid', {}).get('numericValue', None),
+                'ttfb': lighthouse_audits.get('server-response-time', {}).get('numericValue'),
+                'performanceScore': lighthouse_categories.get('performance', {}).get('score', None),
+                'serverResponseTime': lighthouse_audits.get('server-response-time', {}).get('score', None),
+                'usesTextCompression': lighthouse_audits.get('uses-text-compression', {}).get('score', None),
+                'usesLongCacheTtl': lighthouse_audits.get('uses-long-cache-ttl', {}).get('score', None),
+                'domSize': lighthouse_audits.get('dom-size', {}).get('score', None),
+                'offscreenImages': lighthouse_audits.get('offscreen-images', {}).get('score', None),
+                'usesOptimizedImages': lighthouse_audits.get('uses-optimized-images', {}).get('score', None),
+                'usesResponsiveImages': lighthouse_audits.get('uses-responsive-images', {}).get('score', None),
+                'renderBlockingResources': lighthouse_audits.get('render-blocking-resources', {}).get('score', None),
+                'bootupTime': lighthouse_audits.get('bootup-time', {}).get('score', None),
+                'mainthreadWorkBreakdown': lighthouse_audits.get('mainthread-work-breakdown', {}).get('score', None),
             },
-            'originLoadingExperience': loading_experience_dummy('originLoadingExperience'),
+            'originLoadingExperience': self._loading_experience_data(response, 'originLoadingExperience'),
             'loadingExperience': None,
         }
 
@@ -399,18 +389,41 @@ class GooglePagespeed:
             'origin_fallback' not in response['loadingExperience'] or
             response['loadingExperience']['origin_fallback'] is not True
         ):
-            data['loadingExperience'] = loading_experience_dummy('loadingExperience')
+            data['loadingExperience'] = self._loading_experience_data(response, 'loadingExperience')
 
         if not self._validate_response_data(data):
             raise _InvalidDataException()
 
         return data
 
+    def _loading_experience_data(self, response, key) -> dict:
+        loading_experience = {}
+        metrics = response.get(key, {}).get('metrics', None)
+        extract_metrics = {
+            'CUMULATIVE_LAYOUT_SHIFT_SCORE': 'cls',
+            'LARGEST_CONTENTFUL_PAINT_MS': 'lcp',
+            'FIRST_CONTENTFUL_PAINT_MS': 'fcp',
+            'FIRST_INPUT_DELAY_MS': 'fid',
+            'INTERACTION_TO_NEXT_PAINT': 'inp',
+        }
+
+        if type(metrics) is dict:
+            for extract_metric, data_key in extract_metrics.items():
+                metric_data = metrics.get(extract_metric, {})
+                metric_distributions = metric_data.get('distributions', [])
+
+                loading_experience[data_key] = metric_data.get('percentile', None)
+
+                for index, key_suffix in enumerate(['Good', 'Medium', 'Bad']):
+                    try:
+                        loading_experience[data_key + key_suffix] = metric_distributions[index].get('proportion', None)
+                    except IndexError:
+                        loading_experience[data_key + key_suffix] = None
+
+        return loading_experience
+
     def _validate_response_data(self, data: dict) -> bool:
         if type(data['date']) is not datetime:
-            return False
-
-        if type(data['statusCode']) is not int:
             return False
 
         if 'labdata' not in data:
@@ -418,70 +431,6 @@ class GooglePagespeed:
 
         for data_key in ['url', 'strategy', 'cluster']:
             if type(data[data_key]) is not str:
-                return False
-
-        for data_key in [
-            'cls',
-            'lcp',
-            'fcp',
-            'tbt',
-            'mpfid',
-            'ttfb',
-            'performanceScore',
-            'serverResponseTime',
-            'usesTextCompression',
-            'usesLongCacheTtl',
-            'domSize',
-            'offscreenImages',
-            'usesOptimizedImages',
-            'usesResponsiveImages',
-            'bootupTime',
-            'mainthreadWorkBreakdown',
-        ]:
-            if data_key not in data['labdata']:
-                return False
-            if type(data['labdata'][data_key]) is not float and type(data['labdata'][data_key]) is not int:
-                return False
-
-        if not self._validate_response_data_loading_experience(data, 'originLoadingExperience'):
-            return False
-
-        if 'loadingExperience' in data and type(data['loadingExperience']) is dict:
-            if not self._validate_response_data_loading_experience(data, 'loadingExperience'):
-                return False
-
-        return True
-
-    @staticmethod
-    def _validate_response_data_loading_experience(data: dict, parent_data_key: str) -> bool:
-        for data_key in [
-            'cls',
-            'lcp',
-            'fcp',
-            'fid',
-        ]:
-            if data_key not in data[parent_data_key]:
-                return False
-            if type(data[parent_data_key][data_key]) is not int:
-                return False
-
-        for data_key in [
-            'clsGood',
-            'clsMedium',
-            'clsBad',
-            'lcpGood',
-            'lcpMedium',
-            'lcpBad',
-            'fcpGood',
-            'fcpMedium',
-            'fcpBad',
-            'fidGood',
-            'fidMedium',
-            'fidBad',
-        ]:
-            if data_key not in data[parent_data_key]:
-                return False
-            if type(data[parent_data_key][data_key]) is not float and type(data[parent_data_key][data_key]) is not int:
                 return False
 
         return True
