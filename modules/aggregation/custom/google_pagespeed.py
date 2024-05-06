@@ -280,6 +280,10 @@ class GooglePagespeed:
             SchemaField('fidGood', SqlTypeNames.FLOAT, 'REQUIRED'),
             SchemaField('fidMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
             SchemaField('fidBad', SqlTypeNames.FLOAT, 'REQUIRED'),
+            SchemaField('inp', SqlTypeNames.INTEGER, 'REQUIRED'),
+            SchemaField('inpGood', SqlTypeNames.FLOAT, 'REQUIRED'),
+            SchemaField('inpMedium', SqlTypeNames.FLOAT, 'REQUIRED'),
+            SchemaField('inpBad', SqlTypeNames.FLOAT, 'REQUIRED'),
         )
 
         job_config.schema = (
@@ -360,6 +364,10 @@ class GooglePagespeed:
             'fidGood': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][0]['proportion'],
             'fidMedium': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][1]['proportion'],
             'fidBad': response[x]['metrics']['FIRST_INPUT_DELAY_MS']['distributions'][2]['proportion'],
+            'inp': response['originLoadingExperience']['metrics']['INTERACTION_TO_NEXT_PAINT']['percentile'],
+            'inpGood': response[x]['metrics']['INTERACTION_TO_NEXT_PAINT']['distributions'][0]['proportion'],
+            'inpMedium': response[x]['metrics']['INTERACTION_TO_NEXT_PAINT']['distributions'][1]['proportion'],
+            'inpBad': response[x]['metrics']['INTERACTION_TO_NEXT_PAINT']['distributions'][2]['proportion'],
         }
 
         status_code = int(
@@ -459,6 +467,7 @@ class GooglePagespeed:
             'lcp',
             'fcp',
             'fid',
+            'inp',
         ]:
             if data_key not in data[parent_data_key]:
                 return False
@@ -478,6 +487,9 @@ class GooglePagespeed:
             'fidGood',
             'fidMedium',
             'fidBad',
+            'inpGood',
+            'inpMedium',
+            'inpBad',
         ]:
             if data_key not in data[parent_data_key]:
                 return False
