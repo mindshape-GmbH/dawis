@@ -1,0 +1,123 @@
+version: "3"
+
+services:
+
+  dawis:
+    container_name: dawis
+    image: dawis
+    environment:
+      CELERY_LOGLEVEL: info
+      REDIS_HOST: dawis_redis
+      CELERY_BROKER_URL: redis://dawis_redis:6379
+    volumes:
+      - ./config:/app/config
+      - ./log:/opt/dawis/logs
+      - ./schedules:/opt/dawis/var/beat-schedules
+    networks:
+      - dawis
+    depends_on:
+      - dawis_mongo
+      - dawis_mysql
+      - dawis_redis
+    healthcheck:
+      test: "ls config/delete_me_for_restart || kill 1"
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    restart: unless-stopped
+
+  dawis_debug:
+    container_name: dawis_debug
+    image: dawis
+    environment:
+      CELERY_LOGLEVEL: debug
+      REDIS_HOST: dawis_redis
+      CELERY_BROKER_URL: redis://dawis_redis:6379
+    volumes:
+      - ./config:/app/config
+      - ./log-debug:/opt/dawis/logs
+      - ./run-debug.sh:/usr/local/bin/run.sh
+    networks:
+      - dawis
+    depends_on:
+      - dawis_mongo
+      - dawis_mysql
+      - dawis_redis
+    profiles:
+      - debug
+
+  dawis_mongo:
+    container_name: dawis_mongo
+    image: mongo:4.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: dawis
+    volumes:
+      - ./mongo_data:/data/db
+    networks:
+      - dawis
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    command: --wiredTigerCacheSizeGB 1
+    restart: unless-stopped
+
+  dawis_mysql:
+    container_name: dawis_mysql
+    image: mariadb:10.6
+    environment:
+      MARIADB_ROOT_PASSWORD: dawis
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    networks:
+      - dawis
+    restart: unless-stopped
+
+  dawis_mongo_gui:
+    container_name: dawis_mongo_gui
+    image: ugleiton/mongo-gui
+    ports:
+      - "4321:4321"
+    environment:
+      - MONGO_URL=mongodb://root:dawis@dawis_mongo:27017
+    networks:
+      - dawis
+    restart: unless-stopped
+
+  dawis_mysql_gui:
+    container_name: dawis_mysql_gui
+    image: phpmyadmin
+    ports:
+      - "8090:80"
+    environment:
+      - PMA_HOST=dawis_mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=dawis
+    networks:
+      - dawis
+    restart: unless-stopped
+
+  dawis_redis:
+    container_name: dawis_redis
+    image: redis:7.2
+    networks:
+      - dawis
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "1gb", "--maxmemory-policy", "allkeys-lru"]
+    restart: unless-stopped
+
+networks:
+  dawis:
+    name: dawis
