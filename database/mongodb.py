@@ -25,7 +25,7 @@ class MongoDB:
         connection_url = 'mongodb://'
 
         if '' != configuration.username and '' != configuration.password:
-            connection_url += '${0}:${1}@'
+            connection_url += '{0}:{1}@'
 
         connection_url += configuration.host + ':' + str(configuration.port)
 
