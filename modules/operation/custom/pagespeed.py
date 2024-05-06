@@ -270,7 +270,7 @@ class Pagespeed:
             valid = False
             result = ''
             if 'lighthouseResult' in j:
-                result = float(j['lighthouseResult']['audits']['time-to-first-byte']['score'])
+                result = float(j['lighthouseResult']['audits']['server-response-time']['score'])
                 if result >= assert_val:
                     valid = True
 
@@ -299,7 +299,7 @@ class Pagespeed:
             valid = False
             result = ''
             if 'lighthouseResult' in j:
-                result = float(j['lighthouseResult']['audits']['time-to-first-byte']['numericValue'])
+                result = float(j['lighthouseResult']['audits']['server-response-time']['numericValue'])
                 if result <= assert_val:
                     valid = True
 
