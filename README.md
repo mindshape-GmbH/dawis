@@ -43,6 +43,25 @@ Wir unterscheiden bei der Programmierlogik zwischen zwei Ebenen:
 
 Die Grundlage für die Verarbeitung von Daten sind URLs, auf die zugegriffen wird. DAWIS beherrscht sogenannte URL-Sets, d.h. eine Menge an URLs, die gemeinsam behandelt werden kann. So kannst Du zum Beispiel ein URL-Set für wichtige Kategorie-Seiten in Deinem Shop anlegen, oder ein URL-Set für verschiedene Produktdetailseiten. Auf diesen kann man dann gemeinsame Operationen wie z.B. die Prüfung, ob der Canonical-Tag noch vorhanden ist, durchführen. DAWIS kann nicht selbstständig eine Website crawlen und „alle URLs“ behandeln. Das ist auch nicht Sinn und Zweck eines Monitoring- und Alerting-Systems.
 
+## Docker Setup
+
+Um Dawis mit Docker zu starten, sind folgende Schritte notwending:
+
+* `docker build -t dawis .`
+* `docker compose up -d`
+
+Unter `http://localhost:4321` können Daten in MongoDB eingesehen werden, unter `localhost:8090` Daten in MySQL.
+
+Die Konfiguration befindet sich im Ordner `config`. Logs sind im Ordner `log` zu finden.
+
+Beim Starten wird die Datei `delete_me_for_restart` angelegt. Wenn beispielsweise eine Dateifreigabe auf den `config`-Ordner eingerichtet ist, kann Dawis so auf einfache Art und Weise neugestartet werden, nachdem Konfiguration geändert wurde. Dawis empfängt ein SIGINT-Signal und kann kontrolliert seine Prozesse abschließen und neu starten.
+
+Die Ressourcen-Limits können je nach Bedarf in der `docker-compose.yml` erhöht oder weiter eingeschränkt werden, je nach Performance-Anforderungen und Leistung des Servers.
+
+### Debugging
+
+Zum Debuggen kann folgender Befehl ausgeführt werden: `docker compose up --profile debug dawis_debug`
+
 ## Nächste Schritte
 
 Was kommt als Nächstes? Wir sammeln nach dem Lean-Prinzip das Feedback weiter ein. Parallel erweitern wir den Funktionsumfang der vorhandenen Module. Im Fokus stehen diese Bereiche:

@@ -1,0 +1,9 @@
+/.git*
+/.editorconfig
+/*.example.*
+/config/
+/log/
+/schedules/
+/Dockerfile
+/docker-compose.yml
+/run.sh
