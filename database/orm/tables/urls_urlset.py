@@ -31,8 +31,13 @@ class UrlsUrlset(_AbstractTable):
         if existing_row_id is not None:
             return existing_row_id
 
-        result = self._orm.execute(
+        self._orm.execute(
             self._table.insert().values(id=row_id, protocol=protocol, domain=domain, path=path, query=query)
         )
 
-        return result.inserted_primary_key[0]
+        existing_row_id = self._check_existing_url(protocol, domain, path, query)
+
+        if existing_row_id is None:
+            raise Exception("URL not found after insert.")
+
+        return existing_row_id
