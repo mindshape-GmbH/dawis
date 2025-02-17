@@ -45,12 +45,12 @@ Die Grundlage für die Verarbeitung von Daten sind URLs, auf die zugegriffen wir
 
 ## Docker Setup
 
-Um Dawis mit Docker zu starten, sind folgende Schritte notwending:
+Um Dawis mit Docker zu starten, sind folgende Schritte notwendig:
 
 * `docker build -t dawis .`
 * `docker compose up -d`
 
-Unter `http://localhost:4321` können Daten in MongoDB eingesehen werden, unter `localhost:8090` Daten in MySQL.
+Unter `http://localhost:4321` können Daten in MongoDB eingesehen werden, unter `http://localhost:8090` Daten in MySQL.
 
 Die Konfiguration befindet sich im Ordner `config`. Logs sind im Ordner `log` zu finden.
 
