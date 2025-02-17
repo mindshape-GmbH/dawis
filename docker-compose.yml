@@ -20,7 +20,7 @@ services:
       - dawis_mysql
       - dawis_redis
     healthcheck:
-      test: "ls config/delete_me_for_restart || kill 1"
+      test: "(ls config/delete_me_for_restart && test $(stat -c %Y -- /opt/dawis/logs/worker.log) -gt $(($$EPOCHSECONDS - 300))) || kill 1"
       interval: 5s
       timeout: 10s
       retries: 5
