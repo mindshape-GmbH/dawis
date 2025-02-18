@@ -3,6 +3,8 @@
 /*.example.*
 /config/
 /log/
+/mongo_data/
+/mysql_data/
 /schedules/
 /Dockerfile
 /docker-compose.yml

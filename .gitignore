@@ -15,3 +15,5 @@ celerybeat-schedule
 
 /log/
 /schedules/
+/mongo_data/
+/mysql_data/
