@@ -14,7 +14,12 @@ redis = 'redis://{0}:{1}/{2}'.format(
     environ.get('REDIS_DATABASE', '0')
 )
 
-app = Celery('dawis-' + environ.get('CELERY_PROJECT', 'project'), backend=redis, broker=redis)
+app = Celery(
+    'dawis-' + environ.get('CELERY_PROJECT', 'project'),
+    backend=redis,
+    broker=redis,
+    broker_connection_retry_on_startup=True
+)
 app.conf.timezone = environ.get('CELERY_TIMEZONE', 'UTC')
 
 
@@ -37,14 +42,11 @@ def setup_periodic_tasks(sender, **kwargs):
             module = aggregationModule.module
             cron = aggregationModule.cron
 
-            sender.autodiscover_tasks(['modules.aggregation.custom'], module)
-
             if croniter.is_valid(cron) is True:
                 (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
                 sender.add_periodic_task(
                     crontab(minute, hour, day_week, day_month, month),
-                    run,
-                    [configuration.hash, configuration_key, module, 'modules.aggregation.custom'],
+                    run_runner.s(configuration.hash, configuration_key, module, 'modules.aggregation.custom'),
                     time_limit=aggregationModule.runtime_limit,
                     name='aggregation_' + configuration_key
                 )
@@ -53,17 +55,19 @@ def setup_periodic_tasks(sender, **kwargs):
             module = operationModule.module
             cron = operationModule.cron
 
-            sender.autodiscover_tasks(['modules.operation.custom'], module)
-
             if croniter.is_valid(cron) is True:
                 (minute, hour, day_month, month, day_week) = str.split(cron, sep=' ')
                 sender.add_periodic_task(
                     crontab(minute, hour, day_week, day_month, month),
-                    run,
-                    [configuration.hash, configuration_key, module, 'modules.operation.custom'],
+                    run_runner.s(configuration.hash, configuration_key, module, 'modules.operation.custom'),
                     time_limit=operationModule.runtime_limit,
                     name='operation_' + configuration_key
                 )
+
+
+@app.task
+def run_runner(configuration_hash: str, configuration_key: str, module: str, module_namespace: str):
+    run(configuration_hash, configuration_key, module, module_namespace)
 
 
 if __name__ == '__main__':
