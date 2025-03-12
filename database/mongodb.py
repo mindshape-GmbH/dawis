@@ -78,7 +78,7 @@ class MongoDB:
         return self._database.get_collection(collection_name)
 
     def has_collection(self, collection_name: str) -> bool:
-        return collection_name in self._database.collection_names()
+        return collection_name in self._database.list_collection_names()
 
     def insert_documents(self, collection_name: str, data: Sequence[dict], auto_create: bool = True):
         self.get_collection(collection_name, auto_create).insert_many(data)
