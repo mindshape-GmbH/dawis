@@ -10,11 +10,11 @@ class ApiError(Exception):
 
 
 class Client:
-    # https://www.sistrix.de/api/
+    # https://www.sistrix.com/api/
     API_URL = 'https://api.sistrix.com'
     API_FORMAT = 'json'
 
-    # https://www.sistrix.de/api/domain
+    # https://www.sistrix.com/api/domain/
     ENDPOINT_DOMAIN = 'domain'
     ENDPOINT_DOMAIN_OVERVIEW = 'domain.overview'
     ENDPOINT_DOMAIN_VISIBILITYINDEX = 'domain.sichtbarkeitsindex'
@@ -35,7 +35,7 @@ class Client:
     ENDPOINT_DOMAIN_OPPORTUNITIES = 'domain.opportunities'
     ENDPOINT_DOMAIN_IDEAS = 'domain.ideas'
 
-    # https://www.sistrix.de/api/keyword
+    # https://www.sistrix.com/api/keyword/
     ENDPOINT_KEYWORD = 'keyword'
     ENDPOINT_KEYWORD_SEO = 'keyword.seo'
     ENDPOINT_KEYWORD_SEM = 'keyword.sem'
@@ -44,13 +44,13 @@ class Client:
     ENDPOINT_KEYWORD_DOMAIN_SEM = 'keyword.domain.sem'
     ENDPOINT_KEYWORD_DOMAIN_US = 'keyword.domain.us'
 
-    # https://www.sistrix.de/api/link
+    # https://www.sistrix.com/api/links/
     ENDPOINT_LINKS_OVERVIEW = 'links.overview'
     ENDPOINT_LINKS_LIST = 'links.list'
     ENDPOINT_LINKS_LINKTARGETS = 'links.linktargets'
     ENDPOINT_LINKS_LINKTEXTS = 'links.linktexts'
 
-    # https://www.sistrix.de/api/optimizer
+    # https://www.sistrix.com/api/optimizer/
     ENDPOINT_OPTIMIZER_PROJECTS = 'optimizer.projects'
     ENDPOINT_OPTIMIZER_PROJECT = 'optimizer.project'
     ENDPOINT_OPTIMIZER_RANKING = 'optimizer.ranking'
@@ -60,7 +60,7 @@ class Client:
     ENDPOINT_OPTIMIZER_ONPAGE_CRAWL = 'optimizer.onpage.crawl'
     ENDPOINT_OPTIMIZER_ONPAGE_ISSUE = 'optimizer.onpage.issue'
 
-    # https://www.sistrix.de/api/marketplace
+    # https://www.sistrix.com/api/marketplace/
     ENDPOINT_MARKETPLACE_PRODUCT = 'marketplace.product'
     ENDPOINT_MARKETPLACE_PRODUCT_OVERVIEW = 'marketplace.product.overview'
     ENDPOINT_MARKETPLACE_PRODUCT_PRICE = 'marketplace.product.price'
@@ -98,7 +98,7 @@ class Client:
                 str(response.status_code) +
                 ' ' +
                 response.reason +
-                ' - see: https://www.sistrix.de/api/error-codes'
+                ' - see: https://www.sistrix.com/api/errors/'
             )
 
         response_data = response.json()
@@ -108,7 +108,7 @@ class Client:
             for error in response_data['error']:
                 error_messages.append(str(error['error_code']) + ': ' + error['error_message'])
 
-            error_messages.append('info: https://www.sistrix.de/api/error-codes')
+            error_messages.append('info: https://www.sistrix.com/api/errors/')
 
             raise ApiError('\n'.join(error_messages))
 
