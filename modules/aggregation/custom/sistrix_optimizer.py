@@ -101,13 +101,13 @@ class SistrixOptimizer:
                 schema = (
                     SchemaField('request_date', request_date_type, 'REQUIRED'),
                     SchemaField('keyword', SqlTypeNames.STRING, 'REQUIRED'),
-                    SchemaField('position', SqlTypeNames.INTEGER, 'REQUIRED'),
+                    SchemaField('position', SqlTypeNames.INTEGER),
                     SchemaField('positionOverflow', SqlTypeNames.BOOL, 'REQUIRED'),
-                    SchemaField('url', SqlTypeNames.STRING, 'REQUIRED'),
+                    SchemaField('url', SqlTypeNames.STRING),
                     SchemaField('tags', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('device', SqlTypeNames.STRING, 'REQUIRED'),
                     SchemaField('country', SqlTypeNames.STRING, 'REQUIRED'),
-                    SchemaField('traffic', SqlTypeNames.INTEGER, 'REQUIRED'),
+                    SchemaField('traffic', SqlTypeNames.INTEGER),
                     SchemaField('searchengine', SqlTypeNames.STRING, 'REQUIRED'),
                 )
             else:
@@ -233,9 +233,15 @@ class SistrixOptimizer:
 
         for response_data in response['answer'][0]['optimizer.rankings']:
             for ranking in response_data['optimizer.ranking']:
-                if ranking['position'].isnumeric():
+                position_overflow = False
+                traffic = None
+
+                if ranking['position'] is None:
+                    position = None
+                elif type(ranking['position']) is int:
+                    position = ranking['position']
+                elif ranking['position'].isnumeric():
                     position = int(ranking['position'])
-                    position_overflow = False
                 else:
                     match = re.search(r'(\d+)$', ranking['position'])
 
@@ -244,6 +250,12 @@ class SistrixOptimizer:
                         position_overflow = True
                     else:
                         raise SistrixApiError('Invalid position data from api: "{}"'.format(ranking['position']))
+
+                if 'traffic' in ranking:
+                    if type(ranking['traffic']) is int:
+                        traffic = ranking['traffic']
+                    elif ranking['traffic'].isnumeric():
+                        traffic = int(ranking['traffic'])
 
                 data.append({
                     'request_date': request_date,
@@ -254,7 +266,7 @@ class SistrixOptimizer:
                     'tags': ranking['tags'],
                     'device': ranking['device'],
                     'country': ranking['country'],
-                    'traffic': int(ranking['traffic']),
+                    'traffic': traffic,
                     'searchengine': ranking['searchengine'],
                 })
 
