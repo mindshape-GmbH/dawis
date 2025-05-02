@@ -1,0 +1,11 @@
+/.git*
+/.editorconfig
+/*.example.*
+/config/
+/log/
+/mongo_data/
+/mysql_data/
+/schedules/
+/Dockerfile
+/docker-compose.yml
+/run.sh

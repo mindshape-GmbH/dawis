@@ -12,3 +12,8 @@ celerybeat-schedule
 .AppleDouble
 .DS_Store
 .venv
+
+/log/
+/schedules/
+/mongo_data/
+/mysql_data/
