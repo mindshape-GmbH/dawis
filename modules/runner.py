@@ -2,13 +2,11 @@ from database.connection import Connection
 from utilities.configuration import Configuration
 from utilities.exceptions import ExitError
 from utilities.path import Path
-from celery import task
 import tocamelcase
 import importlib
 import pickle
 
 
-@task()
 def run(configuration_hash: str, configuration_key: str, module: str, module_namespace: str):
     with open(Path.var_folder_path() + '/' + configuration_hash + '.pickle', 'rb') as handle:
         configuration = pickle.load(handle)
